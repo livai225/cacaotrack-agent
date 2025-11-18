@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { TrendingUp, Clock, CheckCircle2, Award } from "lucide-react";
+import { TrendingUp, Clock, CheckCircle2, Award, Building2, MapPin, Layers, Users } from "lucide-react";
 
 export default function Dashboard() {
   const stats = [
@@ -33,9 +33,12 @@ export default function Dashboard() {
   ];
 
   const modules = [
-    { name: "Producteurs", count: 1247, total: 1650, percentage: 75 },
-    { name: "Plantations", count: 2134, total: 2500, percentage: 85 },
-    { name: "Opérations Collecte", count: 456, total: 800, percentage: 57 },
+    { name: "Organisations", count: 12, total: 15, percentage: 80, icon: Building2 },
+    { name: "Villages", count: 45, total: 60, percentage: 75, icon: MapPin },
+    { name: "Sections", count: 28, total: 35, percentage: 80, icon: Layers },
+    { name: "Producteurs", count: 1247, total: 1650, percentage: 75, icon: Users },
+    { name: "Plantations", count: 2134, total: 2500, percentage: 85, icon: CheckCircle2 },
+    { name: "Opérations Collecte", count: 456, total: 800, percentage: 57, icon: Clock },
   ];
 
   const activities = [
@@ -96,8 +99,11 @@ export default function Dashboard() {
           <CardContent className="space-y-6">
             {modules.map((module, index) => (
               <div key={index} className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="font-medium text-foreground">{module.name}</span>
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <module.icon className="h-4 w-4 text-primary" />
+                    <span className="font-medium text-foreground">{module.name}</span>
+                  </div>
                   <span className="text-muted-foreground">
                     {module.count} / {module.total}
                   </span>

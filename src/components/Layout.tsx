@@ -1,11 +1,14 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { Home, Users, MapPin, ClipboardList, RefreshCw, User } from "lucide-react";
+import { Home, Building2, MapPin, Layers, Users, Trees, ClipboardList, RefreshCw, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: Home },
+  { name: "Organisations", href: "/organisations", icon: Building2 },
+  { name: "Villages", href: "/villages", icon: MapPin },
+  { name: "Sections", href: "/sections", icon: Layers },
   { name: "Producteurs", href: "/producteurs", icon: Users },
-  { name: "Plantations", href: "/plantations", icon: MapPin },
+  { name: "Plantations", href: "/plantations", icon: Trees },
   { name: "Opérations", href: "/operations", icon: ClipboardList },
   { name: "Synchronisation", href: "/sync", icon: RefreshCw },
 ];
