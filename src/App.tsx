@@ -14,6 +14,11 @@ import Operations from "./pages/Operations";
 import Sync from "./pages/Sync";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
+import OrganisationForm from "./pages/OrganisationForm";
+import ProducteurForm from "./pages/ProducteurForm";
+import VillageForm from "./pages/VillageForm";
+import SectionForm from "./pages/SectionForm";
+import PlantationForm from "./pages/PlantationForm";
 
 const queryClient = new QueryClient();
 
@@ -27,10 +32,15 @@ const App = () => (
           <Route element={<Layout />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/organisations" element={<Organisations />} />
-            <Route path="/villages" element={<Villages />} />
+            <Route path="/organisations/nouveau" element={<OrganisationForm />} />
             <Route path="/sections" element={<Sections />} />
+            <Route path="/sections/nouveau" element={<SectionForm />} />
+            <Route path="/villages" element={<Villages />} />
+            <Route path="/villages/nouveau" element={<VillageForm />} />
             <Route path="/producteurs" element={<Producteurs />} />
+            <Route path="/producteurs/nouveau" element={<ProducteurForm />} />
             <Route path="/plantations" element={<Plantations />} />
+            <Route path="/plantations/nouveau" element={<PlantationForm />} />
             <Route path="/operations" element={<Operations />} />
             <Route path="/sync" element={<Sync />} />
             <Route path="/profile" element={<Profile />} />
