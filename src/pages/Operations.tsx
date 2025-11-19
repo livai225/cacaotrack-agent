@@ -2,8 +2,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Calendar } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function Operations() {
+  const navigate = useNavigate();
+  
   const operations = [
     {
       code: "OP-2024-0456",
@@ -44,7 +47,7 @@ export default function Operations() {
           <h1 className="text-3xl font-bold text-foreground">Opérations de Collecte</h1>
           <p className="text-muted-foreground mt-1">Suivi des opérations terrain</p>
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={() => navigate("/operations/nouveau")}>
           <Plus className="h-4 w-4" />
           Nouvelle Opération
         </Button>
