@@ -19,6 +19,7 @@ import ProducteurForm from "./pages/ProducteurForm";
 import VillageForm from "./pages/VillageForm";
 import SectionForm from "./pages/SectionForm";
 import PlantationForm from "./pages/PlantationForm";
+import OperationForm from "./pages/OperationForm";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/plantations" element={<Plantations />} />
             <Route path="/plantations/nouveau" element={<PlantationForm />} />
             <Route path="/operations" element={<Operations />} />
+            <Route path="/operations/nouveau" element={<OperationForm />} />
             <Route path="/sync" element={<Sync />} />
             <Route path="/profile" element={<Profile />} />
           </Route>
