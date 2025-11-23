@@ -1,72 +1,55 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Filter, MapPin } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Search, Plus, Filter, MapPin, Loader2 } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { api } from "@/services/api";
+import { Village } from "@/types/organisation";
 
 export default function Villages() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
+  const [villages, setVillages] = useState<Village[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const villages = [
-    {
-      id: "VIL-045",
-      nom: "Divo-Centre",
-      localite: "Divo",
-      chefNom: "Kouassi Yao",
-      nombreHabitants: 850,
-      nombreHommes: 380,
-      nombreFemmes: 470,
-      enfantsScolarises: 245,
-      acces_eau: true,
-      status: "validé",
-    },
-    {
-      id: "VIL-046",
-      nom: "Campement N'Zikro",
-      localite: "Gagnoa",
-      chefNom: "Bamba Ibrahim",
-      nombreHabitants: 420,
-      nombreHommes: 190,
-      nombreFemmes: 230,
-      enfantsScolarises: 110,
-      acces_eau: false,
-      status: "attente",
-    },
-    {
-      id: "VIL-047",
-      nom: "Lakota Village",
-      localite: "Lakota",
-      chefNom: "N'Guessan Kouadio",
-      nombreHabitants: 650,
-      nombreHommes: 300,
-      nombreFemmes: 350,
-      enfantsScolarises: 180,
-      acces_eau: true,
-      status: "validé",
-    },
-  ];
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const data = await api.getVillages();
+        setVillages(data);
+      } catch (error) {
+        console.error("Erreur chargement villages:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "validé":
+      case "actif":
         return "bg-success text-success-foreground";
-      case "attente":
-        return "bg-warning text-warning-foreground";
-      case "rejeté":
+      case "inactif":
         return "bg-destructive text-destructive-foreground";
       default:
         return "bg-muted text-muted-foreground";
     }
   };
 
+  const filteredVillages = villages.filter(v => 
+    v.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    v.localite.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Villages & Campements</h1>
-          <p className="text-muted-foreground mt-1">Gestion des villages et campements</p>
+          <p className="text-muted-foreground mt-1">Gestion des villages et campements ({villages.length})</p>
         </div>
         <Link to="/villages/nouveau">
           <Button className="gap-2">
@@ -93,49 +76,57 @@ export default function Villages() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {villages.map((village) => (
-          <Card key={village.id} className="shadow-card hover:shadow-elevated transition-all cursor-pointer">
+        {isLoading ? (
+            <div className="col-span-full flex justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        ) : filteredVillages.map((village) => (
+          <Card 
+            key={village.id} 
+            className="shadow-card hover:shadow-elevated transition-all cursor-pointer group"
+            onClick={() => navigate(`/villages/${village.id}`)}
+          >
             <CardContent className="p-4">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-full bg-secondary/10 flex items-center justify-center shrink-0">
+                <div className="w-12 h-12 rounded-full bg-secondary/10 flex items-center justify-center shrink-0 group-hover:bg-secondary/20 transition-colors">
                   <MapPin className="h-6 w-6 text-secondary" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="min-w-0">
-                      <h3 className="font-semibold text-foreground truncate">{village.nom}</h3>
+                      <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">{village.nom}</h3>
                       <p className="text-xs text-muted-foreground">{village.localite}</p>
                     </div>
-                    <Badge className={getStatusColor(village.status)}>
-                      {village.status}
+                    <Badge className={getStatusColor(village.statut)}>
+                      {village.statut}
                     </Badge>
                   </div>
                   
                   <div className="space-y-1 text-xs mb-3">
-                    <p className="text-muted-foreground">Chef: {village.chefNom}</p>
-                    <p className="font-mono text-primary">{village.id}</p>
+                    <p className="text-muted-foreground">Chef: {village.chef_nom}</p>
+                    <p className="font-mono text-primary">{village.code}</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 pt-3 border-t border-border">
                     <div>
                       <p className="text-xs text-muted-foreground">Habitants</p>
-                      <p className="text-sm font-semibold text-foreground">{village.nombreHabitants}</p>
+                      <p className="text-sm font-semibold text-foreground">{village.nombre_habitants}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Scolarisés</p>
-                      <p className="text-sm font-semibold text-foreground">{village.enfantsScolarises}</p>
+                      <p className="text-sm font-semibold text-foreground">{village.nombre_enfants_scolarises}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Hommes</p>
-                      <p className="text-sm font-semibold text-foreground">{village.nombreHommes}</p>
+                      <p className="text-sm font-semibold text-foreground">{village.nombre_hommes}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Femmes</p>
-                      <p className="text-sm font-semibold text-foreground">{village.nombreFemmes}</p>
+                      <p className="text-sm font-semibold text-foreground">{village.nombre_femmes}</p>
                     </div>
                   </div>
 
-                  {village.acces_eau && (
+                  {village.eau_courante && (
                     <Badge variant="outline" className="mt-3 text-xs border-success text-success">
                       Accès eau
                     </Badge>

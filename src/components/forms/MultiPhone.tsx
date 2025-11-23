@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, X } from "lucide-react";
@@ -10,8 +10,14 @@ interface MultiPhoneProps {
   required?: boolean;
 }
 
-export default function MultiPhone({ label, values, onChange, required }: MultiPhoneProps) {
-  const [phones, setPhones] = useState<string[]>(values.length > 0 ? values : [""]);
+export default function MultiPhone({ label, values = [], onChange, required }: MultiPhoneProps) {
+  const [phones, setPhones] = useState<string[]>(values && values.length > 0 ? values : [""]);
+
+  useEffect(() => {
+    if (values && values.length > 0) {
+      setPhones(values);
+    }
+  }, [values]);
 
   const handleAdd = () => {
     const newPhones = [...phones, ""];

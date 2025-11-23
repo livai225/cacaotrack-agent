@@ -1,88 +1,76 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Filter, Trees, MapPin } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Search, Plus, Filter, Trees, MapPin, TrendingUp, Map, Loader2 } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { api } from "@/services/api";
+import { Parcelle } from "@/types/organisation";
 
 export default function Plantations() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
+  const [plantations, setPlantations] = useState<Parcelle[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const plantations = [
-    {
-      id: "PROD-0287-P1",
-      producteur: "Kouassi Jean",
-      superficieDeclaree: 5.2,
-      superficieReelle: 4.8,
-      age: 15,
-      distanceMagasin: 3.5,
-      latitude: 5.8374,
-      longitude: -5.3579,
-      maladies: {
-        pourritureBrune: 2,
-        swollenShoot: 1,
-      },
-      status: "validé",
-    },
-    {
-      id: "PROD-0288-P1",
-      producteur: "Koné Marie",
-      superficieDeclaree: 3.8,
-      superficieReelle: 3.5,
-      age: 8,
-      distanceMagasin: 2.1,
-      latitude: 6.1234,
-      longitude: -5.9456,
-      maladies: {
-        pourritureBrune: 1,
-        swollenShoot: 0,
-      },
-      status: "attente",
-    },
-    {
-      id: "PROD-0289-P1",
-      producteur: "Yao Kouadio",
-      superficieDeclaree: 7.5,
-      superficieReelle: 7.2,
-      age: 22,
-      distanceMagasin: 5.8,
-      latitude: 5.9876,
-      longitude: -5.6543,
-      maladies: {
-        pourritureBrune: 3,
-        swollenShoot: 2,
-      },
-      status: "validé",
-    },
-  ];
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const data = await api.getParcelles();
+        setPlantations(data);
+      } catch (error) {
+        console.error("Erreur chargement plantations:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "validé":
+      case "active":
         return "bg-success text-success-foreground";
-      case "attente":
-        return "bg-warning text-warning-foreground";
-      case "rejeté":
+      case "inactive":
         return "bg-destructive text-destructive-foreground";
       default:
         return "bg-muted text-muted-foreground";
     }
   };
 
+  const filteredPlantations = plantations.filter(p => 
+    p.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    p.id_producteur.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Plantations</h1>
-          <p className="text-muted-foreground mt-1">Gestion des plantations de cacao</p>
+          <p className="text-muted-foreground mt-1">Gestion des plantations de cacao ({plantations.length})</p>
         </div>
-        <Link to="/plantations/nouveau">
-          <Button className="gap-2">
-            <Plus className="h-4 w-4" />
-            Nouvelle Plantation
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link to="/plantations/business-plan">
+            <Button variant="outline" className="gap-2 border-primary/20 hover:bg-primary/5 text-primary">
+              <TrendingUp className="h-4 w-4" />
+              Farm Business Plan
+            </Button>
+          </Link>
+          <Link to="/plantations/carte">
+            <Button variant="outline" className="gap-2 border-primary/20 hover:bg-primary/5 text-primary">
+              <Map className="h-4 w-4" />
+              Cartographie
+            </Button>
+          </Link>
+          <Link to="/plantations/nouveau">
+            <Button className="gap-2">
+              <Plus className="h-4 w-4" />
+              Nouvelle Plantation
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="flex gap-4">
@@ -102,59 +90,67 @@ export default function Plantations() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {plantations.map((plantation) => (
-          <Card key={plantation.id} className="shadow-card hover:shadow-elevated transition-all cursor-pointer">
+        {isLoading ? (
+            <div className="col-span-full flex justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        ) : filteredPlantations.map((plantation) => (
+          <Card 
+            key={plantation.id} 
+            className="shadow-card hover:shadow-elevated transition-all cursor-pointer group"
+            onClick={() => navigate(`/plantations/${plantation.id}`)}
+          >
             <CardContent className="p-4">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center shrink-0">
+                <div className="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center shrink-0 group-hover:bg-success/20 transition-colors">
                   <Trees className="h-6 w-6 text-success" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="min-w-0">
-                      <h3 className="font-semibold text-foreground truncate">{plantation.id}</h3>
-                      <p className="text-xs text-muted-foreground">{plantation.producteur}</p>
+                      <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">{plantation.code}</h3>
+                      <p className="text-xs text-muted-foreground truncate">{plantation.id_producteur}</p>
                     </div>
-                    <Badge className={getStatusColor(plantation.status)}>
-                      {plantation.status}
+                    <Badge className={getStatusColor(plantation.statut)}>
+                      {plantation.statut}
                     </Badge>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 pt-3 border-t border-border">
                     <div>
                       <p className="text-xs text-muted-foreground">Déclarée</p>
-                      <p className="text-sm font-semibold text-foreground">{plantation.superficieDeclaree} ha</p>
+                      <p className="text-sm font-semibold text-foreground">{plantation.superficie_declaree} ha</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Réelle</p>
-                      <p className="text-sm font-semibold text-foreground">{plantation.superficieReelle} ha</p>
+                      <p className="text-sm font-semibold text-foreground">{plantation.superficie_reelle || '-'} ha</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Âge</p>
-                      <p className="text-sm font-semibold text-foreground">{plantation.age} ans</p>
+                      <p className="text-sm font-semibold text-foreground">{plantation.age_plantation} ans</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Distance</p>
-                      <p className="text-sm font-semibold text-foreground">{plantation.distanceMagasin} km</p>
+                      <p className="text-sm font-semibold text-foreground">{plantation.distance_magasin || '-'} km</p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
                     <MapPin className="h-3 w-3 text-muted-foreground" />
                     <span className="text-xs text-muted-foreground font-mono">
-                      {plantation.latitude.toFixed(4)}, {plantation.longitude.toFixed(4)}
+                      {plantation.latitude?.toFixed(4) || 'N/A'}, {plantation.longitude?.toFixed(4) || 'N/A'}
                     </span>
                   </div>
 
-                  <div className="flex gap-2 mt-2">
-                    {plantation.maladies.pourritureBrune > 0 && (
-                      <Badge variant="outline" className="text-xs border-warning text-warning">
-                        Pourr. brune ({plantation.maladies.pourritureBrune})
+                  <div className="flex gap-2 mt-2 flex-wrap">
+                    {plantation.maladie_pourriture_brune !== 'Inexistant' && (
+                      <Badge variant="outline" className="text-[10px] border-orange-200 text-orange-700 bg-orange-50">
+                        Pourr. brune ({plantation.maladie_pourriture_brune})
                       </Badge>
                     )}
-                    {plantation.maladies.swollenShoot > 0 && (
-                      <Badge variant="outline" className="text-xs border-destructive text-destructive">
-                        Swollen ({plantation.maladies.swollenShoot})
+                    {plantation.maladie_swollen_shoot !== 'Inexistant' && (
+                      <Badge variant="outline" className="text-[10px] border-destructive text-destructive bg-destructive/10">
+                        Swollen ({plantation.maladie_swollen_shoot})
                       </Badge>
                     )}
                   </div>

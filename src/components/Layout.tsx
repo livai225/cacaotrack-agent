@@ -1,9 +1,10 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { Home, Building2, MapPin, Layers, Users, Trees, ClipboardList, RefreshCw, User } from "lucide-react";
+import { Home, Building2, MapPin, Layers, Users, Trees, ClipboardList, RefreshCw, User, Map } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: Home },
+  { name: "Carte", href: "/carte", icon: Map },
   { name: "Organisations", href: "/organisations", icon: Building2 },
   { name: "Villages", href: "/villages", icon: MapPin },
   { name: "Sections", href: "/sections", icon: Layers },

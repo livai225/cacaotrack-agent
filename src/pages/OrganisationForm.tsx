@@ -14,23 +14,26 @@ import MultiPhone from "@/components/forms/MultiPhone";
 import { ArrowLeft, Save } from "lucide-react";
 import { toast } from "sonner";
 import { generateOrganisationCode } from "@/utils/codeGenerators";
+import type { Organisation } from "@/types/organisation";
+import { organisationService } from "@/services/organisationService";
 
 const organisationSchema = z.object({
   type: z.enum(["Coopérative", "Regroupement"]),
   nom: z.string().min(3, "Le nom doit contenir au moins 3 caractères"),
   region: z.string().min(1, "La région est obligatoire"),
   departement: z.string().min(1, "Le département est obligatoire"),
-  sousPrefecture: z.string().min(1, "La sous-préfecture est obligatoire"),
+  sous_prefecture: z.string().min(1, "La sous-préfecture est obligatoire"),
   localite: z.string().min(1, "La localité est obligatoire"),
-  siegeSocial: z.string().optional(),
+  siege_social: z.string().optional(),
   latitude: z.number().optional(),
   longitude: z.number().optional(),
-  presidentNom: z.string().min(1, "Le nom du président est obligatoire"),
-  presidentContact: z.array(z.string()).min(1, "Au moins un numéro est requis"),
-  secretaireNom: z.string().optional(),
-  secretaireContact: z.array(z.string()).optional(),
+  president_nom: z.string().min(1, "Le nom du président est obligatoire"),
+  president_contact: z.array(z.string()).min(1, "Au moins un numéro est requis"),
+  secretaire_nom: z.string().optional(),
+  secretaire_contact: z.array(z.string()).optional(),
   photo: z.string().optional(),
-  potentielProduction: z.number().min(0).optional(),
+  potentiel_production: z.number().min(0).optional(),
+  statut: z.enum(["actif", "inactif", "suspendu"]).default("actif"),
 });
 
 type OrganisationFormData = z.infer<typeof organisationSchema>;
@@ -40,16 +43,47 @@ export default function OrganisationForm() {
   const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<OrganisationFormData>({
     resolver: zodResolver(organisationSchema),
     defaultValues: {
-      presidentContact: [""],
-      secretaireContact: [""],
+      president_contact: [""],
+      secretaire_contact: [""],
+      statut: "actif",
     }
   });
 
   const onSubmit = (data: OrganisationFormData) => {
-    const code = generateOrganisationCode(1);
-    console.log("Organisation créée:", { code, ...data });
-    toast.success(`Organisation ${code} créée avec succès`);
-    navigate("/organisations");
+    try {
+      // Récupérer toutes les organisations pour générer le prochain code
+      const existingOrgs = organisationService.getAll();
+      const nextNumber = existingOrgs.length + 1;
+      const code = generateOrganisationCode(nextNumber);
+      
+      // Créer l'organisation avec le service
+      const newOrganisation = organisationService.create({
+        code,
+        type: data.type,
+        nom: data.nom,
+        region: data.region,
+        departement: data.departement,
+        sous_prefecture: data.sous_prefecture,
+        localite: data.localite,
+        siege_social: data.siege_social,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        president_nom: data.president_nom,
+        president_contact: data.president_contact,
+        secretaire_nom: data.secretaire_nom,
+        secretaire_contact: data.secretaire_contact,
+        photo: data.photo,
+        potentiel_production: data.potentiel_production,
+        statut: data.statut,
+      });
+      
+      console.log("Organisation créée:", newOrganisation);
+      toast.success(`Organisation ${code} créée avec succès`);
+      navigate("/organisations");
+    } catch (error) {
+      console.error("Erreur lors de la création:", error);
+      toast.error("Erreur lors de la création de l'organisation");
+    }
   };
 
   return (
@@ -108,9 +142,9 @@ export default function OrganisationForm() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="sousPrefecture">Sous-Préfecture *</Label>
-                <Input id="sousPrefecture" {...register("sousPrefecture")} />
-                {errors.sousPrefecture && <p className="text-sm text-destructive mt-1">{errors.sousPrefecture.message}</p>}
+                <Label htmlFor="sous_prefecture">Sous-Préfecture *</Label>
+                <Input id="sous_prefecture" {...register("sous_prefecture")} />
+                {errors.sous_prefecture && <p className="text-sm text-destructive mt-1">{errors.sous_prefecture.message}</p>}
               </div>
 
               <div>
@@ -121,18 +155,39 @@ export default function OrganisationForm() {
             </div>
 
             <div>
-              <Label htmlFor="siegeSocial">Siège Social</Label>
-              <Textarea id="siegeSocial" {...register("siegeSocial")} placeholder="Adresse complète du siège social" />
+              <Label htmlFor="siege_social">Siège Social</Label>
+              <Textarea id="siege_social" {...register("siege_social")} placeholder="Adresse complète du siège social" />
             </div>
 
-            <div>
-              <Label htmlFor="potentielProduction">Potentiel de Production (tonnes)</Label>
-              <Input 
-                id="potentielProduction" 
-                type="number" 
-                step="0.1"
-                {...register("potentielProduction", { valueAsNumber: true })} 
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="potentiel_production">Potentiel de Production (tonnes)</Label>
+                <Input 
+                  id="potentiel_production" 
+                  type="number" 
+                  step="0.1"
+                  {...register("potentiel_production", { valueAsNumber: true })} 
+                  placeholder="Ex: 1250"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="statut">Statut *</Label>
+                <Select 
+                  value={watch("statut")} 
+                  onValueChange={(value) => setValue("statut", value as "actif" | "inactif" | "suspendu")}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="actif">Actif</SelectItem>
+                    <SelectItem value="inactif">Inactif</SelectItem>
+                    <SelectItem value="suspendu">Suspendu</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.statut && <p className="text-sm text-destructive mt-1">{errors.statut.message}</p>}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -161,31 +216,31 @@ export default function OrganisationForm() {
             <div className="space-y-4">
               <h3 className="font-semibold text-foreground">Président *</h3>
               <div>
-                <Label htmlFor="presidentNom">Nom complet *</Label>
-                <Input id="presidentNom" {...register("presidentNom")} placeholder="Nom et prénom(s)" />
-                {errors.presidentNom && <p className="text-sm text-destructive mt-1">{errors.presidentNom.message}</p>}
+                <Label htmlFor="president_nom">Nom complet *</Label>
+                <Input id="president_nom" {...register("president_nom")} placeholder="Nom et prénom(s)" />
+                {errors.president_nom && <p className="text-sm text-destructive mt-1">{errors.president_nom.message}</p>}
               </div>
               <div>
                 <MultiPhone
                   label="Numéros de téléphone *"
-                  values={watch("presidentContact") || [""]}
-                  onChange={(phones) => setValue("presidentContact", phones)}
+                  values={watch("president_contact") || [""]}
+                  onChange={(phones) => setValue("president_contact", phones)}
                 />
-                {errors.presidentContact && <p className="text-sm text-destructive mt-1">{errors.presidentContact.message}</p>}
+                {errors.president_contact && <p className="text-sm text-destructive mt-1">{errors.president_contact.message}</p>}
               </div>
             </div>
 
             <div className="space-y-4">
               <h3 className="font-semibold text-foreground">Secrétaire Général</h3>
               <div>
-                <Label htmlFor="secretaireNom">Nom complet</Label>
-                <Input id="secretaireNom" {...register("secretaireNom")} placeholder="Nom et prénom(s)" />
+                <Label htmlFor="secretaire_nom">Nom complet</Label>
+                <Input id="secretaire_nom" {...register("secretaire_nom")} placeholder="Nom et prénom(s)" />
               </div>
               <div>
                 <MultiPhone
                   label="Numéros de téléphone"
-                  values={watch("secretaireContact") || [""]}
-                  onChange={(phones) => setValue("secretaireContact", phones)}
+                  values={watch("secretaire_contact") || [""]}
+                  onChange={(phones) => setValue("secretaire_contact", phones)}
                 />
               </div>
             </div>
