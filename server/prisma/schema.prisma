@@ -1,0 +1,376 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = "mysql://root:@localhost:3306/asco"
+}
+
+model Organisation {
+  id                    String    @id @default(uuid())
+  code                  String    @unique
+  nom                   String
+  type                  String    // Coopérative, GIE, Association
+  statut                String    // actif, suspendu, inactif
+  
+  // Siège social & Contact
+  siege_social          String?
+  date_creation         DateTime  @default(now())
+  email                 String?
+  telephone             String?
+  
+  // Localisation Administrative
+  region                String
+  departement           String
+  sous_prefecture       String
+  localite              String
+
+  // Direction
+  president_nom         String
+  president_contact     Json      // string[] stocké en JSON
+  dg_nom                String?
+  dg_contact            Json?     // string[] stocké en JSON
+  secretaire_nom        String?
+  secretaire_contact    Json?     // string[] stocké en JSON
+  tresorier_nom         String?
+  tresorier_contact     Json?     // string[] stocké en JSON
+
+  // Métriques
+  nb_producteurs        Int       @default(0)
+  surface_totale        Float     @default(0)
+  nb_sections           Int       @default(0)
+  potentiel_production  Float     @default(0)
+  
+  sections              Section[]
+  
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model Section {
+  id                    String    @id @default(uuid())
+  id_organisation       String
+  organisation          Organisation @relation(fields: [id_organisation], references: [id])
+  
+  code                  String    @unique
+  nom                   String
+  statut                String    // actif, inactif
+
+  // Localisation
+  localite              String
+  point_geographique    String?   // "lat,long"
+
+  // Responsables
+  president_nom         String
+  president_contact     Json      // string[]
+  secretaire_nom        String?
+  secretaire_contact    Json?     // string[]
+  magasinier_nom        String?
+  magasinier_contact    Json?     // string[]
+  peseur_nom            String?
+  peseur_contact        Json?     // string[]
+  
+  // Logistique
+  vehicule_tricycle_nombre Int    @default(0)
+  vehicule_moto_nombre     Int    @default(0)
+  vehicule_camionnette_nombre Int @default(0)
+  
+  // Matériel
+  materiel_bascule      Boolean   @default(false)
+  materiel_dickey_john  Boolean   @default(false)
+  materiel_sondes       Boolean   @default(false)
+  materiel_couteaux     Boolean   @default(false)
+
+  // Performance
+  tonnage_c_precedente  Float     @default(0)
+  tonnage_c_cours       Float     @default(0)
+  tonnage_potentiel     Float     @default(0)
+  
+  nb_producteurs        Int       @default(0)
+
+  // Commercialisation
+  comm_coop             Boolean   @default(true)
+  comm_pisteur          Boolean   @default(false)
+  comm_autre_coop       Boolean   @default(false)
+  
+  villages              Village[]
+
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model Village {
+  id                    String    @id @default(uuid())
+  id_section            String
+  section               Section   @relation(fields: [id_section], references: [id])
+  
+  code                  String    @unique
+  nom                   String
+  type                  String    // Village, Campement
+  statut                String    // actif, inactif
+  
+  localite              String
+  
+  // Démographie
+  nombre_habitants      Int       @default(0)
+  nombre_hommes         Int       @default(0)
+  nombre_femmes         Int       @default(0)
+  nombre_enfants        Int       @default(0)
+  nombre_enfants_scolarises Int   @default(0)
+
+  // Autorité
+  chef_nom              String?
+  chef_contact          Json?     // string[]
+
+  // Infrastructures (Boolean)
+  ecole_primaire        Boolean   @default(false)
+  college_lycee         Boolean   @default(false)
+  dispensaire           Boolean   @default(false)
+  maternite             Boolean   @default(false)
+  pharmacie             Boolean   @default(false)
+  eau_courante          Boolean   @default(false)
+  pompe_hydraulique     Boolean   @default(false)
+  puits                 Boolean   @default(false)
+  riviere_marigot       Boolean   @default(false)
+  electricite_reseau    Boolean   @default(false)
+  electricite_solaire   Boolean   @default(false)
+  marche                Boolean   @default(false)
+
+  // Économie / Cultures
+  culture_cacao         Boolean   @default(true)
+  culture_cafe          Boolean   @default(false)
+  culture_hevea         Boolean   @default(false)
+  culture_palmier       Boolean   @default(false)
+  culture_anacarde      Boolean   @default(false)
+  culture_coton         Boolean   @default(false)
+  culture_vivrier       Boolean   @default(false)
+  culture_riz           Boolean   @default(false)
+  culture_mais          Boolean   @default(false)
+  culture_igname        Boolean   @default(false)
+  culture_manioc        Boolean   @default(false)
+
+  // Finance
+  om_orange             Boolean   @default(false)
+  momo_mtn              Boolean   @default(false)
+  flooz_moov            Boolean   @default(false)
+  wave                  Boolean   @default(false)
+  microfinance          Boolean   @default(false)
+
+  producteurs           Producteur[]
+
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model Producteur {
+  id                    String    @id @default(uuid())
+  id_village            String
+  village               Village   @relation(fields: [id_village], references: [id])
+  
+  code                  String    @unique
+  statut                String    // actif, suspendu, inactif, décédé
+  
+  // Identité
+  nom_complet           String
+  sexe                  String    // M, F
+  date_naissance        DateTime?
+  lieu_naissance        String?
+  nationalite           String?
+  type_piece            String?   // CNI, Attestation, Passeport, Carte Consulaire
+  numero_piece          String?
+  photo_planteur        String?   // URL ou Base64
+  
+  // Contact
+  telephone_1           String?
+  telephone_2           String?
+  niveau_etude          String?
+  alphabete             Boolean   @default(false)
+
+  // Ménage
+  statut_matrimonial    String?
+  nb_epouses            Int       @default(0)
+  nb_enfants            Int       @default(0)
+  nb_personnes_charge   Int       @default(0)
+
+  // Habitat & Conditions
+  type_habitat          String?   // Dur, Semi-dur, Banco, Bois
+  proprietaire_maison   Boolean   @default(false)
+  nb_pieces_maison      Int       @default(0)
+  acces_eau_potable     Boolean   @default(false)
+  acces_electricite     Boolean   @default(false)
+  acces_latrines        Boolean   @default(false)
+
+  // Production Cacao
+  annee_debut_cacao     Int?
+  cacao_nb_plantations  Int       @default(0)
+  cacao_superficie      Float     @default(0)
+  cacao_production_annuelle Float @default(0)
+
+  // Activités Annexes
+  activite_secondaire   String?
+  revenu_annuel_estime  Float?
+
+  parcelles             Parcelle[]
+  operations            Operation[]
+
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model Parcelle {
+  id                    String    @id @default(uuid())
+  id_producteur         String
+  producteur            Producteur @relation(fields: [id_producteur], references: [id])
+  
+  code                  String    @unique
+  statut                String    // active, jachere, abandonnee
+  
+  // Géolocalisation
+  latitude              Float?
+  longitude             Float?
+  superficie_declaree   Float     @default(0)
+  superficie_reelle     Float?
+  
+  // Agronomie
+  age_plantation        Int?      // Années
+  annee_creation        Int?
+  mode_acquisition      String?   // Héritage, Achat, Don, Location
+  type_document         String?   // Titre Foncier, Attestation Villageoise
+  
+  variete_cacao         String?   // Amelonado, Mercedes, Tout Venant
+  densite_pieds_hectare Int?
+  culture_intercalaire  String?   // Banane, Avocat, etc. (JSON ou string simple)
+  
+  // Itinéraire Technique
+  entretien_frequence   String?   // Nb fois par an
+  utilisation_engrais   Boolean   @default(false)
+  engrais               String?   // Noms des engrais
+  utilisation_pesticide Boolean   @default(false)
+  pesticides            String?
+  utilisation_herbicide Boolean   @default(false)
+  herbicides            String?
+  utilisation_fongicide Boolean   @default(false)
+  fongicides            String?
+
+  // Maladies
+  maladie_swollen_shoot String    @default("Inexistant") // Inexistant, Faible, Fort
+  maladie_pourriture_brune String @default("Inexistant")
+  maladie_insectes      String    @default("Inexistant")
+  maladie_parasites     String?   // Gui, Loranthus
+
+  // Récolte & Post-Récolte
+  distance_magasin      Float?    // km
+  moyen_transport       String?   // Pied, Moto, Tricycle
+  
+  fermentation_type     String?   // Caisses, Tas feuilles bananier
+  fermentation_duree    Int?      // jours
+  
+  sechage_type          String?   // Claies, Nattes, Ciment, Bâche
+  sechage_duree         Int?      // jours
+
+  // Main d'oeuvre
+  main_oeuvre_familiale Boolean   @default(true)
+  main_oeuvre_saisonniere Boolean @default(false)
+  main_oeuvre_permanente Boolean  @default(false)
+  nb_travailleurs_perm  Int       @default(0)
+
+  equipement_bottes     Boolean   @default(false)
+  equipement_combinaison Boolean  @default(false)
+  equipement_masque     Boolean   @default(false)
+  equipement_lunettes   Boolean   @default(false)
+  equipement_gants      Boolean   @default(false)
+
+  // Commercialisation
+  comm_coop             Boolean   @default(true)
+  comm_pisteur          Boolean   @default(false)
+  comm_autre_acheteur   Boolean   @default(false)
+
+  operations            Operation[]
+
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model Operation {
+  id                    String    @id @default(uuid())
+  id_producteur         String
+  producteur            Producteur @relation(fields: [id_producteur], references: [id])
+  
+  id_parcelle           String
+  parcelle              Parcelle  @relation(fields: [id_parcelle], references: [id])
+  
+  statut                String    // Brouillon, Validé, Payé, Annulé
+  campagne              String    // 2023-2024, 2024-2025
+
+  // 1. Récolte
+  date_recolte_1        DateTime?
+  date_recolte_2        DateTime?
+  date_recolte_3        DateTime?
+  quantite_cabosses     Int?      // Nombre estimé
+
+  // 2. Écabossage
+  date_ecabossage       DateTime?
+  ecabossage_duree      String?   // ex: "2 jours"
+  cout_ecabossage       Float?
+
+  // 3. Fermentation
+  fermentation_debut    DateTime?
+  fermentation_fin      DateTime?
+  materiel_feuilles     Boolean   @default(false)
+  materiel_caisses      Boolean   @default(false)
+  retournements         Int       @default(2) // Nb de fois
+
+  // 4. Séchage
+  sechage_debut         DateTime?
+  sechage_fin           DateTime?
+  aire_ciment           Boolean   @default(false)
+  aire_claie_bambou     Boolean   @default(false)
+  aire_bache_noire      Boolean   @default(false)
+  probleme_pluie        Boolean   @default(false)
+
+  // 5. Ensachage & Transport
+  ensachage_debut       DateTime?
+  nb_sacs_brousse       Int       @default(0)
+  poids_estimatif       Float?
+  date_transport        DateTime?
+  transporteur_nom      String?
+  vehicule_immatriculation String?
+
+  // 6. Livraison & Pesée (Magasin Section)
+  date_livraison        DateTime?
+  numero_recu           String?
+  nb_sacs_acceptes      Int       @default(0)
+  manutention_pesee     Float?    // Poids Net Validé
+  humidite              Float?    // Taux humidité
+  grainage              Int?      // Nb fèves par 100g
+  matiere_etrangere     Float?    // %
+  moisissure            Float?    // %
+  validation_statut     String    @default("En attente") // Conforme, Rejeté
+
+  // 7. Paiement
+  montant_du            Float?
+  date_paiement         DateTime?
+  paiement_especes      Boolean   @default(false)
+  paiement_cheque       Boolean   @default(false)
+  numero_cheque         String?
+  banque                String?
+  paiement_virement     Boolean   @default(false)
+  
+  montant_especes       Float     @default(0)
+  montant_cheque        Float     @default(0)
+  montant_mobile_money  Float     @default(0)
+
+  // Retenues / Primes
+  prime_qualite         Float     @default(0)
+  retenue_mec           Boolean   @default(false) // Magasin Echange ??
+  retenue_mec_taux      Float     @default(0)
+  retenue_epargne       Boolean   @default(false)
+  retenue_epargne_taux  Float     @default(0)
+
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
