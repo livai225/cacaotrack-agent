@@ -205,6 +205,7 @@ async function main() {
             id: "op-1",
             id_producteur: prod1.id,
             id_parcelle: parc1.id,
+            id_village: vil1.id,
             statut: "Payé",
             campagne: "2024-2025",
             date_recolte_1: new Date("2024-10-01"),

@@ -74,4 +74,13 @@ export const api = {
     if (!res.ok) throw new Error("Erreur chargement operation");
     return res.json();
   },
+  createOperation: async (data: any): Promise<Operation> => {
+    const res = await fetch(`${API_URL}/operations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error("Erreur création operation");
+    return res.json();
+  }
 };

@@ -65,6 +65,33 @@ export default function OrganisationDetails() {
         </div>
       </div>
 
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+         <Card>
+           <CardContent className="p-4 flex flex-col items-center justify-center text-center">
+             <span className="text-3xl font-bold text-primary">{org.stats?.nbSections || 0}</span>
+             <span className="text-sm text-muted-foreground">Sections</span>
+           </CardContent>
+         </Card>
+         <Card>
+           <CardContent className="p-4 flex flex-col items-center justify-center text-center">
+             <span className="text-3xl font-bold text-primary">{org.stats?.nbVillages || 0}</span>
+             <span className="text-sm text-muted-foreground">Villages</span>
+           </CardContent>
+         </Card>
+         <Card>
+           <CardContent className="p-4 flex flex-col items-center justify-center text-center">
+             <span className="text-3xl font-bold text-primary">{org.stats?.nbProducteurs || 0}</span>
+             <span className="text-sm text-muted-foreground">Producteurs</span>
+           </CardContent>
+         </Card>
+         <Card>
+           <CardContent className="p-4 flex flex-col items-center justify-center text-center">
+             <span className="text-3xl font-bold text-primary">{org.stats?.nbParcelles || 0}</span>
+             <span className="text-sm text-muted-foreground">Parcelles</span>
+           </CardContent>
+         </Card>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
            <CardHeader><CardTitle>Informations Administratives</CardTitle></CardHeader>

@@ -26,6 +26,12 @@ export interface Organisation {
   date_modification: Date;
   statut: 'actif' | 'inactif' | 'suspendu';
   sync_status?: 'synced' | 'pending' | 'error';
+  stats?: {
+    nbSections: number;
+    nbVillages: number;
+    nbProducteurs: number;
+    nbParcelles: number;
+  };
 }
 
 /**

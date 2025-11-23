@@ -161,6 +161,7 @@ model Village {
   microfinance          Boolean   @default(false)
 
   producteurs           Producteur[]
+  operations            Operation[]
 
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
@@ -297,6 +298,9 @@ model Parcelle {
 
 model Operation {
   id                    String    @id @default(uuid())
+  id_village            String
+  village               Village   @relation(fields: [id_village], references: [id])
+  
   id_producteur         String
   producteur            Producteur @relation(fields: [id_producteur], references: [id])
   
