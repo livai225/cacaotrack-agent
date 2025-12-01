@@ -23,10 +23,18 @@ cd ~/apps/cacaotrack-agent/server || {
 echo -e "${YELLOW}📂 Dans le dossier: $(pwd)${NC}"
 echo ""
 
-# 1. Vérifier le fichier .env
+# 1. Vérifier et corriger le fichier .env
 echo -e "${YELLOW}🔍 Vérification du fichier .env...${NC}"
 if [ -f ".env" ]; then
     echo -e "${GREEN}✓ Fichier .env trouvé${NC}"
+    
+    # Vérifier si l'IP publique est utilisée au lieu de localhost
+    if grep -q "@82.208.22.230:" .env; then
+        echo -e "${YELLOW}⚠ Correction: Remplacement de l'IP publique par localhost...${NC}"
+        sed -i 's/@82.208.22.230:/@localhost:/g' .env
+        echo -e "${GREEN}✓ Fichier .env corrigé${NC}"
+    fi
+    
     echo "Contenu:"
     cat .env
 else
