@@ -126,9 +126,10 @@ Toute la documentation est disponible dans le dossier [`docs/`](./docs/) :
 
 ## 📊 Versions
 
-- **Version actuelle:** 2.3.0
-- **Dernière mise à jour:** 24 Novembre 2024
+- **Version actuelle:** 2.4.0
+- **Dernière mise à jour:** 1er Décembre 2025
 - **Statut:** ✅ Production Ready
+- **Base de données:** PostgreSQL + PostGIS
 
 ## 🎯 Modules disponibles
 
@@ -142,6 +143,25 @@ Toute la documentation est disponible dans le dossier [`docs/`](./docs/) :
 - ✅ Mode Hors Ligne
 - ✅ Synchronisation
 - ✅ Cartographie
+
+## 🌐 API Endpoints
+
+### Routes de Santé
+- `GET /api` - Informations sur l'API
+- `GET /api/health` - Health check et statut de la DB
+- `GET /api/postgis` - Vérification PostGIS
+
+### Routes Métier
+- `GET /api/organisations` - Liste des organisations
+- `GET /api/sections` - Liste des sections
+- `GET /api/villages` - Liste des villages
+- `GET /api/producteurs` - Liste des producteurs
+- `GET /api/parcelles` - Liste des parcelles
+- `GET /api/operations` - Liste des opérations
+- `GET /api/agents` - Liste des agents
+- `GET /api/regions` - Liste des régions
+
+Voir [DEPLOIEMENT_VM.md](./DEPLOIEMENT_VM.md) pour plus de détails.
 
 ## 📞 Support
 

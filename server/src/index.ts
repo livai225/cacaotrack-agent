@@ -12,6 +12,76 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// --- Routes de Santé et Informations ---
+
+// Route racine de l'API
+app.get('/api', (req, res) => {
+  res.json({
+    success: true,
+    message: 'API CacaoTrack - Système de Gestion de la Filière Cacao',
+    version: '2.4.0',
+    status: 'running',
+    database: 'PostgreSQL + PostGIS',
+    endpoints: {
+      organisations: '/api/organisations',
+      sections: '/api/sections',
+      villages: '/api/villages',
+      producteurs: '/api/producteurs',
+      parcelles: '/api/parcelles',
+      operations: '/api/operations',
+      agents: '/api/agents',
+      regions: '/api/regions',
+      health: '/api/health'
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Route de santé (health check)
+app.get('/api/health', async (req, res) => {
+  try {
+    // Test de connexion à la base de données
+    await prisma.$queryRaw`SELECT 1`;
+    
+    res.json({
+      success: true,
+      status: 'healthy',
+      database: 'connected',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || 'development'
+    });
+  } catch (error) {
+    res.status(503).json({
+      success: false,
+      status: 'unhealthy',
+      database: 'disconnected',
+      error: 'Database connection failed',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Route de vérification PostGIS
+app.get('/api/postgis', async (req, res) => {
+  try {
+    const result: any = await prisma.$queryRaw`SELECT PostGIS_version() as version`;
+    res.json({
+      success: true,
+      postgis: 'enabled',
+      version: result[0]?.version || 'unknown',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      postgis: 'error',
+      error: 'PostGIS check failed',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // --- Routes ---
 
 // Organisations
