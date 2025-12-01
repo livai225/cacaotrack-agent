@@ -15,14 +15,16 @@ import { toast } from "sonner";
 import { ArrowLeft, ArrowRight, Check, Leaf, Scissors, Truck, Wind, Sun, Package, Scale, Banknote, User, Info } from "lucide-react";
 import PhotoCapture from "@/components/forms/PhotoCapture";
 import DateInput from "@/components/forms/DateInput";
-import { generateOperationCode } from "@/utils/codeGenerators";
 import { api } from "@/services/api";
 import { Producteur, Parcelle } from "@/types/organisation";
+import { agentService } from "@/services/agentService";
+import type { Agent } from "@/types/agent";
 
 // 0. Identification
 const identificationSchema = z.object({
   idProducteur: z.string().min(1, "Producteur requis"),
   idPlantation: z.string().min(1, "Plantation requise"),
+  idAgent: z.string().optional(), // Agent optionnel pour l'instant
 });
 
 // ... (Le reste des schémas reste inchangé)
@@ -93,7 +95,7 @@ const manutentionSchema = z.object({
 const paiementSchema = z.object({
   especes: z.boolean(), montantEspeces: z.number().optional(),
   cheque: z.boolean(), montantCheque: z.number().optional(), numeroCheque: z.string().optional(), banque: z.string().optional(),
-  
+
   retenueMec: z.boolean(), tauxMec: z.number().optional(),
   retenueEpargne: z.boolean(), tauxEpargne: z.number().optional(),
 });
@@ -114,11 +116,12 @@ export default function OperationForm() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // États pour les données dynamiques
   const [producteurs, setProducteurs] = useState<Producteur[]>([]);
   const [allParcelles, setAllParcelles] = useState<Parcelle[]>([]);
   const [filteredParcelles, setFilteredParcelles] = useState<Parcelle[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
 
   const form0 = useForm({ resolver: zodResolver(identificationSchema) });
   const form1 = useForm({ resolver: zodResolver(recolteSchema) });
@@ -134,12 +137,14 @@ export default function OperationForm() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [prods, parcs] = await Promise.all([
+        const [prods, parcs, agts] = await Promise.all([
           api.getProducteurs(),
-          api.getParcelles()
+          api.getParcelles(),
+          agentService.getAgents()
         ]);
         setProducteurs(prods);
         setAllParcelles(parcs);
+        setAgents(agts.filter(a => a.statut === 'actif'));
       } catch (error) {
         console.error("Erreur chargement données:", error);
         toast.error("Impossible de charger la liste des producteurs");
@@ -183,26 +188,32 @@ export default function OperationForm() {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-        const data = {
-          identification: form0.getValues(),
-          recolte: form1.getValues(),
-          ecabossage: form2.getValues(),
-          transport: form3.getValues(),
-          fermentation: form4.getValues(),
-          sechage: form5.getValues(),
-          ensachage: form6.getValues(),
-          manutention: form7.getValues(),
-          paiement: form8.getValues(),
-        };
-        
-        await api.createOperation(data);
-        toast.success("Opération enregistrée avec succès");
-        navigate("/operations");
-    } catch (error) {
-        console.error(error);
-        toast.error("Erreur lors de l'enregistrement");
+      const identificationData = form0.getValues();
+      const data = {
+        identification: {
+          ...identificationData,
+          idAgent: identificationData.idAgent || null, // Envoyer null si vide
+        },
+        recolte: form1.getValues(),
+        ecabossage: form2.getValues(),
+        transport: form3.getValues(),
+        fermentation: form4.getValues(),
+        sechage: form5.getValues(),
+        ensachage: form6.getValues(),
+        manutention: form7.getValues(),
+        paiement: form8.getValues(),
+      };
+
+      console.log('📋 Données du formulaire:', data);
+      await api.createOperation(data);
+      toast.success("Opération enregistrée avec succès");
+      navigate("/operations");
+    } catch (error: any) {
+      console.error('❌ Erreur complète:', error);
+      const errorMessage = error?.message || "Erreur lors de l'enregistrement";
+      toast.error(errorMessage);
     } finally {
-        setIsSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -211,71 +222,85 @@ export default function OperationForm() {
       case 1: // Identification
         return (
           <div className="space-y-6">
-             <div className="bg-blue-50 p-4 rounded-lg flex items-start gap-3 text-sm text-blue-800">
-                <Info className="h-5 w-5 shrink-0 mt-0.5" />
-                <p>Veuillez identifier le producteur et la parcelle concernée par cette opération de collecte.</p>
-             </div>
-             <div className="space-y-2">
-               <Label>Producteur *</Label>
-               <Select onValueChange={v => form0.setValue("idProducteur", v)} value={form0.watch("idProducteur")}>
-                 <SelectTrigger><SelectValue placeholder="Rechercher un producteur..." /></SelectTrigger>
-                 <SelectContent>
-                   {producteurs.map((prod) => (
-                     <SelectItem key={prod.id} value={prod.id}>
-                       {prod.nom_complet} ({prod.code})
-                     </SelectItem>
-                   ))}
-                 </SelectContent>
-               </Select>
-             </div>
-             <div className="space-y-2">
-               <Label>Plantation Concernée *</Label>
-               <Select onValueChange={v => form0.setValue("idPlantation", v)} value={form0.watch("idPlantation")} disabled={!selectedProducteurId}>
-                 <SelectTrigger><SelectValue placeholder="Choisir une plantation..." /></SelectTrigger>
-                 <SelectContent>
-                   {filteredParcelles.length === 0 ? (
-                     <SelectItem value="none" disabled>Aucune plantation trouvée pour ce producteur</SelectItem>
-                   ) : (
-                     filteredParcelles.map((parc) => (
-                       <SelectItem key={parc.id} value={parc.id}>
-                         {parc.code} ({parc.superficie_declaree} Ha)
-                       </SelectItem>
-                     ))
-                   )}
-                 </SelectContent>
-               </Select>
-             </div>
+            <div className="bg-blue-50 p-4 rounded-lg flex items-start gap-3 text-sm text-blue-800">
+              <Info className="h-5 w-5 shrink-0 mt-0.5" />
+              <p>Veuillez identifier le producteur et la parcelle concernée par cette opération de collecte.</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Producteur *</Label>
+              <Select onValueChange={v => form0.setValue("idProducteur", v)} value={form0.watch("idProducteur")}>
+                <SelectTrigger><SelectValue placeholder="Rechercher un producteur..." /></SelectTrigger>
+                <SelectContent>
+                  {producteurs.map((prod) => (
+                    <SelectItem key={prod.id} value={prod.id}>
+                      {prod.nom_complet} ({prod.code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Plantation Concernée *</Label>
+              <Select onValueChange={v => form0.setValue("idPlantation", v)} value={form0.watch("idPlantation")} disabled={!selectedProducteurId}>
+                <SelectTrigger><SelectValue placeholder="Choisir une plantation..." /></SelectTrigger>
+                <SelectContent>
+                  {filteredParcelles.length === 0 ? (
+                    <SelectItem value="none" disabled>Aucune plantation trouvée pour ce producteur</SelectItem>
+                  ) : (
+                    filteredParcelles.map((parc) => (
+                      <SelectItem key={parc.id} value={parc.id}>
+                        {parc.code} ({parc.superficie_declaree} Ha)
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Agent de Collecte</Label>
+              <Select onValueChange={v => form0.setValue("idAgent", v)} value={form0.watch("idAgent")}>
+                <SelectTrigger><SelectValue placeholder="Sélectionner un agent (optionnel)..." /></SelectTrigger>
+                <SelectContent>
+                  {agents.map((agent) => (
+                    <SelectItem key={agent.id} value={agent.id}>
+                      {agent.nom} {agent.prenom} ({agent.code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">L'agent qui a effectué cette collecte</p>
+            </div>
           </div>
         );
-      
+
       case 2: // Récolte
         return (
           <div className="space-y-6">
-             <div className="grid gap-4 border p-4 rounded">
-               <Label className="font-bold">Récolte 1 (Principale)</Label>
-               <p className="text-xs text-muted-foreground -mt-2 mb-2">Date de la première récolte des cabosses.</p>
-               <DateInput label="Date" value={form1.watch("dateRecolte1")} onChange={v => form1.setValue("dateRecolte1", v)} />
-               <PhotoCapture label="Photo" value={form1.watch("photoRecolte1")} onChange={v => form1.setValue("photoRecolte1", v)} />
-             </div>
-             <div className="grid gap-4 border p-4 rounded">
-               <Label className="font-bold">Récolte 2 (Complémentaire)</Label>
-               <DateInput label="Date" value={form1.watch("dateRecolte2")} onChange={v => form1.setValue("dateRecolte2", v)} />
-               <PhotoCapture label="Photo" value={form1.watch("photoRecolte2")} onChange={v => form1.setValue("photoRecolte2", v)} />
-             </div>
-             <div className="grid gap-4 border p-4 rounded">
-               <Label className="font-bold">Récolte 3</Label>
-               <DateInput label="Date" value={form1.watch("dateRecolte3")} onChange={v => form1.setValue("dateRecolte3", v)} />
-               <PhotoCapture label="Photo" value={form1.watch("photoRecolte3")} onChange={v => form1.setValue("photoRecolte3", v)} />
-             </div>
+            <div className="grid gap-4 border p-4 rounded">
+              <Label className="font-bold">Récolte 1 (Principale)</Label>
+              <p className="text-xs text-muted-foreground -mt-2 mb-2">Date de la première récolte des cabosses.</p>
+              <DateInput label="Date" value={form1.watch("dateRecolte1")} onChange={v => form1.setValue("dateRecolte1", v)} />
+              <PhotoCapture label="Photo" value={form1.watch("photoRecolte1")} onChange={v => form1.setValue("photoRecolte1", v)} />
+            </div>
+            <div className="grid gap-4 border p-4 rounded">
+              <Label className="font-bold">Récolte 2 (Complémentaire)</Label>
+              <DateInput label="Date" value={form1.watch("dateRecolte2")} onChange={v => form1.setValue("dateRecolte2", v)} />
+              <PhotoCapture label="Photo" value={form1.watch("photoRecolte2")} onChange={v => form1.setValue("photoRecolte2", v)} />
+            </div>
+            <div className="grid gap-4 border p-4 rounded">
+              <Label className="font-bold">Récolte 3</Label>
+              <DateInput label="Date" value={form1.watch("dateRecolte3")} onChange={v => form1.setValue("dateRecolte3", v)} />
+              <PhotoCapture label="Photo" value={form1.watch("photoRecolte3")} onChange={v => form1.setValue("photoRecolte3", v)} />
+            </div>
           </div>
         );
       case 3: // Ecabossage
         return (
           <div className="space-y-6">
-             <div className="bg-yellow-50 p-4 rounded-lg flex items-start gap-3 text-sm text-yellow-800">
-                <Info className="h-5 w-5 shrink-0 mt-0.5" />
-                <p>L'écabossage doit idéalement avoir lieu dans les 5 jours suivant la récolte pour garantir la qualité.</p>
-             </div>
+            <div className="bg-yellow-50 p-4 rounded-lg flex items-start gap-3 text-sm text-yellow-800">
+              <Info className="h-5 w-5 shrink-0 mt-0.5" />
+              <p>L'écabossage doit idéalement avoir lieu dans les 5 jours suivant la récolte pour garantir la qualité.</p>
+            </div>
             <DateInput label="Date Ecabossage" value={form2.watch("dateEcabossage")} onChange={v => form2.setValue("dateEcabossage", v)} />
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Début</Label><Input type="time" {...form2.register("heureDebut")} /></div>
@@ -296,84 +321,84 @@ export default function OperationForm() {
       case 4: // Transport
         return (
           <div className="space-y-4">
-             <div className="bg-muted p-4 rounded-lg text-sm text-muted-foreground">
-                <p>Transport des fèves fraîches du champ vers le site de fermentation (village ou centre).</p>
-             </div>
-             <DateInput label="Date Transport" value={form3.watch("dateTransport")} onChange={v => form3.setValue("dateTransport", v)} />
+            <div className="bg-muted p-4 rounded-lg text-sm text-muted-foreground">
+              <p>Transport des fèves fraîches du champ vers le site de fermentation (village ou centre).</p>
+            </div>
+            <DateInput label="Date Transport" value={form3.watch("dateTransport")} onChange={v => form3.setValue("dateTransport", v)} />
           </div>
         );
       case 5: // Fermentation
         return (
           <div className="space-y-6">
-             <div className="bg-green-50 p-4 rounded-lg flex items-start gap-3 text-sm text-green-800">
-                <Info className="h-5 w-5 shrink-0 mt-0.5" />
-                <p>La fermentation dure en moyenne 6 jours. Assurez-vous que la date de début suit l'écabossage.</p>
-             </div>
-             <div className="grid grid-cols-2 gap-4">
-               <DateInput label="Date Début" value={form4.watch("dateDebut")} onChange={v => form4.setValue("dateDebut", v)} />
-               <DateInput label="Date Fin" value={form4.watch("dateFin")} onChange={v => form4.setValue("dateFin", v)} />
-             </div>
-             <div className="space-y-2">
-               <Label className="font-bold">Matériel utilisé</Label>
-               <div className="flex gap-4 flex-wrap">
-                 <div className="flex items-center gap-2"><Checkbox checked={form4.watch("materiel_feuilles")} onCheckedChange={c => form4.setValue("materiel_feuilles", !!c)} /><Label>Feuilles de bananier</Label></div>
-                 <div className="flex items-center gap-2"><Checkbox checked={form4.watch("materiel_caisses")} onCheckedChange={c => form4.setValue("materiel_caisses", !!c)} /><Label>Caisses de fermentation</Label></div>
-               </div>
-               <Input placeholder="Autres..." {...form4.register("materiel_autres")} />
-             </div>
+            <div className="bg-green-50 p-4 rounded-lg flex items-start gap-3 text-sm text-green-800">
+              <Info className="h-5 w-5 shrink-0 mt-0.5" />
+              <p>La fermentation dure en moyenne 6 jours. Assurez-vous que la date de début suit l'écabossage.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <DateInput label="Date Début" value={form4.watch("dateDebut")} onChange={v => form4.setValue("dateDebut", v)} />
+              <DateInput label="Date Fin" value={form4.watch("dateFin")} onChange={v => form4.setValue("dateFin", v)} />
+            </div>
+            <div className="space-y-2">
+              <Label className="font-bold">Matériel utilisé</Label>
+              <div className="flex gap-4 flex-wrap">
+                <div className="flex items-center gap-2"><Checkbox checked={form4.watch("materiel_feuilles")} onCheckedChange={c => form4.setValue("materiel_feuilles", !!c)} /><Label>Feuilles de bananier</Label></div>
+                <div className="flex items-center gap-2"><Checkbox checked={form4.watch("materiel_caisses")} onCheckedChange={c => form4.setValue("materiel_caisses", !!c)} /><Label>Caisses de fermentation</Label></div>
+              </div>
+              <Input placeholder="Autres..." {...form4.register("materiel_autres")} />
+            </div>
           </div>
         );
       case 6: // Séchage
         return (
           <div className="space-y-6">
             <div className="bg-orange-50 p-4 rounded-lg flex items-start gap-3 text-sm text-orange-800">
-                <Info className="h-5 w-5 shrink-0 mt-0.5" />
-                <p>Le séchage commence immédiatement après la fin de la fermentation.</p>
-             </div>
+              <Info className="h-5 w-5 shrink-0 mt-0.5" />
+              <p>Le séchage commence immédiatement après la fin de la fermentation.</p>
+            </div>
             <div className="grid grid-cols-2 gap-4">
-               <DateInput label="Date Début" value={form5.watch("dateDebut")} onChange={v => form5.setValue("dateDebut", v)} />
-               <DateInput label="Date Fin (estimée)" value={form5.watch("dateFin")} onChange={v => form5.setValue("dateFin", v)} />
-             </div>
-             <div className="space-y-2">
-               <Label className="font-bold">Aire de séchage</Label>
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                 <div className="flex items-center gap-2"><Checkbox checked={form5.watch("aire_claie_bambou")} onCheckedChange={c => form5.setValue("aire_claie_bambou", !!c)} /><Label>Claie en bambou</Label></div>
-                 <div className="flex items-center gap-2"><Checkbox checked={form5.watch("aire_plastique_sol")} onCheckedChange={c => form5.setValue("aire_plastique_sol", !!c)} /><Label>Plastique sur sol</Label></div>
-                 <div className="flex items-center gap-2"><Checkbox checked={form5.watch("aire_plastique_ciment")} onCheckedChange={c => form5.setValue("aire_plastique_ciment", !!c)} /><Label>Plastique sur aire cimentée</Label></div>
-                 <div className="flex items-center gap-2"><Checkbox checked={form5.watch("aire_cimentee")} onCheckedChange={c => form5.setValue("aire_cimentee", !!c)} /><Label>Aire cimentée</Label></div>
-                 <div className="flex items-center gap-2"><Checkbox checked={form5.watch("aire_ensachage")} onCheckedChange={c => form5.setValue("aire_ensachage", !!c)} /><Label>Ensachage direct</Label></div>
-               </div>
-             </div>
+              <DateInput label="Date Début" value={form5.watch("dateDebut")} onChange={v => form5.setValue("dateDebut", v)} />
+              <DateInput label="Date Fin (estimée)" value={form5.watch("dateFin")} onChange={v => form5.setValue("dateFin", v)} />
+            </div>
+            <div className="space-y-2">
+              <Label className="font-bold">Aire de séchage</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="flex items-center gap-2"><Checkbox checked={form5.watch("aire_claie_bambou")} onCheckedChange={c => form5.setValue("aire_claie_bambou", !!c)} /><Label>Claie en bambou</Label></div>
+                <div className="flex items-center gap-2"><Checkbox checked={form5.watch("aire_plastique_sol")} onCheckedChange={c => form5.setValue("aire_plastique_sol", !!c)} /><Label>Plastique sur sol</Label></div>
+                <div className="flex items-center gap-2"><Checkbox checked={form5.watch("aire_plastique_ciment")} onCheckedChange={c => form5.setValue("aire_plastique_ciment", !!c)} /><Label>Plastique sur aire cimentée</Label></div>
+                <div className="flex items-center gap-2"><Checkbox checked={form5.watch("aire_cimentee")} onCheckedChange={c => form5.setValue("aire_cimentee", !!c)} /><Label>Aire cimentée</Label></div>
+                <div className="flex items-center gap-2"><Checkbox checked={form5.watch("aire_ensachage")} onCheckedChange={c => form5.setValue("aire_ensachage", !!c)} /><Label>Ensachage direct</Label></div>
+              </div>
+            </div>
           </div>
         );
       case 7: // Ensachage
         return (
-           <div className="space-y-6">
-             <div className="grid grid-cols-2 gap-4">
-               <DateInput label="Début Ensachage" value={form6.watch("dateDebut")} onChange={v => form6.setValue("dateDebut", v)} />
-               <DateInput label="Fin Ensachage" value={form6.watch("dateFin")} onChange={v => form6.setValue("dateFin", v)} />
-             </div>
-             <div className="grid grid-cols-2 gap-4">
-               <div><Label>Nombre de sacs brousse</Label><Input type="number" {...form6.register("nbSacs", { valueAsNumber: true })} /></div>
-               <div><Label>Poids estimatif (Kg)</Label><Input type="number" {...form6.register("poidsEstimatif", { valueAsNumber: true })} /></div>
-             </div>
-             <div>
-               <Label>Lieu de stockage (État)</Label>
-               <Select onValueChange={v => form6.setValue("lieuStockage", v as any)}><SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger><SelectContent><SelectItem value="Bon">Bon</SelectItem><SelectItem value="Acceptable">Acceptable</SelectItem><SelectItem value="Mauvais">Mauvais</SelectItem></SelectContent></Select>
-             </div>
-             <div className="border-t pt-4">
-                <Label className="font-bold mb-2 block">Livraison au Magasin / Acheteur</Label>
-                <DateInput label="Date Livraison" value={form6.watch("dateLivraison")} onChange={v => form6.setValue("dateLivraison", v)} />
-             </div>
-           </div>
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <DateInput label="Début Ensachage" value={form6.watch("dateDebut")} onChange={v => form6.setValue("dateDebut", v)} />
+              <DateInput label="Fin Ensachage" value={form6.watch("dateFin")} onChange={v => form6.setValue("dateFin", v)} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>Nombre de sacs brousse</Label><Input type="number" {...form6.register("nbSacs", { valueAsNumber: true })} /></div>
+              <div><Label>Poids estimatif (Kg)</Label><Input type="number" {...form6.register("poidsEstimatif", { valueAsNumber: true })} /></div>
+            </div>
+            <div>
+              <Label>Lieu de stockage (État)</Label>
+              <Select onValueChange={v => form6.setValue("lieuStockage", v as any)}><SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger><SelectContent><SelectItem value="Bon">Bon</SelectItem><SelectItem value="Acceptable">Acceptable</SelectItem><SelectItem value="Mauvais">Mauvais</SelectItem></SelectContent></Select>
+            </div>
+            <div className="border-t pt-4">
+              <Label className="font-bold mb-2 block">Livraison au Magasin / Acheteur</Label>
+              <DateInput label="Date Livraison" value={form6.watch("dateLivraison")} onChange={v => form6.setValue("dateLivraison", v)} />
+            </div>
+          </div>
         );
       case 8: // Manutention
         return (
           <div className="space-y-6">
             <div className="flex flex-col gap-3">
-               <div className="flex items-center gap-2"><Checkbox checked={form7.watch("dechargement")} onCheckedChange={c => form7.setValue("dechargement", !!c)} /><Label>Déchargement effectué</Label></div>
-               <div className="flex items-center gap-2"><Checkbox checked={form7.watch("sonde")} onCheckedChange={c => form7.setValue("sonde", !!c)} /><Label>Sonde effectuée</Label></div>
-               <div className="flex items-center gap-2"><Checkbox checked={form7.watch("analyse")} onCheckedChange={c => form7.setValue("analyse", !!c)} /><Label>Analyse Produit effectuée</Label></div>
+              <div className="flex items-center gap-2"><Checkbox checked={form7.watch("dechargement")} onCheckedChange={c => form7.setValue("dechargement", !!c)} /><Label>Déchargement effectué</Label></div>
+              <div className="flex items-center gap-2"><Checkbox checked={form7.watch("sonde")} onCheckedChange={c => form7.setValue("sonde", !!c)} /><Label>Sonde effectuée</Label></div>
+              <div className="flex items-center gap-2"><Checkbox checked={form7.watch("analyse")} onCheckedChange={c => form7.setValue("analyse", !!c)} /><Label>Analyse Produit effectuée</Label></div>
             </div>
             <div><Label>Pesée validée (Kg)</Label><Input type="number" {...form7.register("pesee", { valueAsNumber: true })} /></div>
             <div>
@@ -393,31 +418,31 @@ export default function OperationForm() {
         return (
           <div className="space-y-6">
             <div className="border p-4 rounded space-y-3">
-               <div className="flex items-center gap-2"><Checkbox checked={form8.watch("especes")} onCheckedChange={c => form8.setValue("especes", !!c)} /><Label className="font-bold">Espèces</Label></div>
-               {form8.watch("especes") && <Input placeholder="Montant FCFA" type="number" {...form8.register("montantEspeces", { valueAsNumber: true })} />}
+              <div className="flex items-center gap-2"><Checkbox checked={form8.watch("especes")} onCheckedChange={c => form8.setValue("especes", !!c)} /><Label className="font-bold">Espèces</Label></div>
+              {form8.watch("especes") && <Input placeholder="Montant FCFA" type="number" {...form8.register("montantEspeces", { valueAsNumber: true })} />}
             </div>
             <div className="border p-4 rounded space-y-3">
-               <div className="flex items-center gap-2"><Checkbox checked={form8.watch("cheque")} onCheckedChange={c => form8.setValue("cheque", !!c)} /><Label className="font-bold">Chèque</Label></div>
-               {form8.watch("cheque") && (
-                 <div className="grid grid-cols-1 gap-3">
-                   <Input placeholder="Montant FCFA" type="number" {...form8.register("montantCheque", { valueAsNumber: true })} />
-                   <Input placeholder="Numéro Chèque" {...form8.register("numeroCheque")} />
-                   <Input placeholder="Banque" {...form8.register("banque")} />
-                 </div>
-               )}
+              <div className="flex items-center gap-2"><Checkbox checked={form8.watch("cheque")} onCheckedChange={c => form8.setValue("cheque", !!c)} /><Label className="font-bold">Chèque</Label></div>
+              {form8.watch("cheque") && (
+                <div className="grid grid-cols-1 gap-3">
+                  <Input placeholder="Montant FCFA" type="number" {...form8.register("montantCheque", { valueAsNumber: true })} />
+                  <Input placeholder="Numéro Chèque" {...form8.register("numeroCheque")} />
+                  <Input placeholder="Banque" {...form8.register("banque")} />
+                </div>
+              )}
             </div>
             <div className="border-t pt-4 space-y-3">
-               <Label className="font-bold block">Retenues</Label>
-               <div className="flex items-center gap-4">
-                 <Checkbox checked={form8.watch("retenueMec")} onCheckedChange={c => form8.setValue("retenueMec", !!c)} />
-                 <Label>MEC</Label>
-                 {form8.watch("retenueMec") && <Input className="w-32" placeholder="Taux/Kg" type="number" {...form8.register("tauxMec", { valueAsNumber: true })} />}
-               </div>
-               <div className="flex items-center gap-4">
-                 <Checkbox checked={form8.watch("retenueEpargne")} onCheckedChange={c => form8.setValue("retenueEpargne", !!c)} />
-                 <Label>Autres (Epargne)</Label>
-                 {form8.watch("retenueEpargne") && <Input className="w-32" placeholder="Taux/Kg" type="number" {...form8.register("tauxEpargne", { valueAsNumber: true })} />}
-               </div>
+              <Label className="font-bold block">Retenues</Label>
+              <div className="flex items-center gap-4">
+                <Checkbox checked={form8.watch("retenueMec")} onCheckedChange={c => form8.setValue("retenueMec", !!c)} />
+                <Label>MEC</Label>
+                {form8.watch("retenueMec") && <Input className="w-32" placeholder="Taux/Kg" type="number" {...form8.register("tauxMec", { valueAsNumber: true })} />}
+              </div>
+              <div className="flex items-center gap-4">
+                <Checkbox checked={form8.watch("retenueEpargne")} onCheckedChange={c => form8.setValue("retenueEpargne", !!c)} />
+                <Label>Autres (Epargne)</Label>
+                {form8.watch("retenueEpargne") && <Input className="w-32" placeholder="Taux/Kg" type="number" {...form8.register("tauxEpargne", { valueAsNumber: true })} />}
+              </div>
             </div>
           </div>
         );

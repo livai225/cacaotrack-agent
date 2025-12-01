@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test API Régions - ASCO Track</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #4CAF50;
+            border-radius: 4px;
+        }
+
+        .error {
+            border-left-color: #f44336;
+            background: #ffebee;
+        }
+
+        .region-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .region-card {
+            padding: 10px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .region-code {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            flex: 1;
+            padding: 15px;
+            background: #e3f2fd;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #1976d2;
+        }
+
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🧪 Test API ASCO Track - Module Agent</h1>
+
+        <div>
+            <button onclick="testRegions()">📍 Charger les Régions</button>
+            <button onclick="testAgents()">👤 Charger les Agents</button>
+            <button onclick="testAll()">🚀 Tout Tester</button>
+        </div>
+
+        <div id="stats" class="stats" style="display: none;">
+            <div class="stat-card">
+                <div class="stat-value" id="regionCount">0</div>
+                <div class="stat-label">Régions</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="agentCount">0</div>
+                <div class="stat-label">Agents</div>
+            </div>
+        </div>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api';
+
+        async function testRegions() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>⏳ Chargement des régions...</p>';
+
+            try {
+                const response = await fetch(`${API_URL}/regions`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const regions = await response.json();
+
+                document.getElementById('stats').style.display = 'flex';
+                document.getElementById('regionCount').textContent = regions.length;
+
+                let html = `
+                    <div class="result">
+                        <h2>✅ ${regions.length} Régions chargées</h2>
+                        <div class="region-grid">
+                `;
+
+                regions.forEach(region => {
+                    html += `
+                        <div class="region-card">
+                            <div class="region-code">${region.code}</div>
+                            <div>${region.nom}</div>
+                        </div>
+                    `;
+                });
+
+                html += '</div></div>';
+                resultDiv.innerHTML = html;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <h2>❌ Erreur</h2>
+                        <p>${error.message}</p>
+                        <p>Assurez-vous que le serveur est démarré sur http://localhost:3000</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testAgents() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>⏳ Chargement des agents...</p>';
+
+            try {
+                const response = await fetch(`${API_URL}/agents`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const agents = await response.json();
+
+                document.getElementById('stats').style.display = 'flex';
+                document.getElementById('agentCount').textContent = agents.length;
+
+                let html = `
+                    <div class="result">
+                        <h2>✅ ${agents.length} Agents chargés</h2>
+                        <div class="region-grid">
+                `;
+
+                agents.forEach(agent => {
+                    const regionNames = agent.regions?.map(ar => ar.region?.nom).filter(Boolean).join(', ') || 'Aucune';
+                    html += `
+                        <div class="region-card">
+                            <div class="region-code">${agent.code}</div>
+                            <div><strong>${agent.nom} ${agent.prenom}</strong></div>
+                            <div style="font-size: 12px; color: #666;">📞 ${agent.telephone}</div>
+                            <div style="font-size: 12px; color: #666;">📍 ${regionNames}</div>
+                            <div style="margin-top: 5px;">
+                                <span style="padding: 2px 8px; background: ${agent.statut === 'actif' ? '#4CAF50' : '#999'
+                        }; color: white; border-radius: 3px; font-size: 11px;">
+                                    ${agent.statut}
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += '</div></div>';
+                resultDiv.innerHTML = html;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <h2>❌ Erreur</h2>
+                        <p>${error.message}</p>
+                        <p>Assurez-vous que le serveur est démarré sur http://localhost:3000</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testAll() {
+            await testRegions();
+            setTimeout(async () => {
+                const regionsResult = document.getElementById('result').innerHTML;
+                await testAgents();
+                const agentsResult = document.getElementById('result').innerHTML;
+
+                document.getElementById('result').innerHTML = regionsResult + agentsResult;
+            }, 500);
+        }
+
+        // Test automatique au chargement
+        window.addEventListener('load', () => {
+            testRegions();
+        });
+    </script>
+</body>
+
+</html>

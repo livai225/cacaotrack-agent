@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Filter, Trees, MapPin, TrendingUp, Map, Loader2 } from "lucide-react";
+import { Search, Plus, Filter, Trees, MapPin, TrendingUp, Map, Loader2, Trash2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "@/services/api";
 import { Parcelle } from "@/types/organisation";
@@ -39,7 +39,19 @@ export default function Plantations() {
     }
   };
 
-  const filteredPlantations = plantations.filter(p => 
+  const handleDelete = async (id: string) => {
+    if (confirm("Êtes-vous sûr de vouloir supprimer cette plantation ?")) {
+      try {
+        await api.deleteParcelle(id);
+        setPlantations(plantations.filter(p => p.id !== id));
+      } catch (error) {
+        console.error("Erreur suppression:", error);
+        alert("Erreur lors de la suppression");
+      }
+    }
+  };
+
+  const filteredPlantations = plantations.filter(p =>
     p.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.id_producteur.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -91,12 +103,12 @@ export default function Plantations() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {isLoading ? (
-            <div className="col-span-full flex justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
+          <div className="col-span-full flex justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
         ) : filteredPlantations.map((plantation) => (
-          <Card 
-            key={plantation.id} 
+          <Card
+            key={plantation.id}
             className="shadow-card hover:shadow-elevated transition-all cursor-pointer group"
             onClick={() => navigate(`/plantations/${plantation.id}`)}
           >
@@ -153,6 +165,21 @@ export default function Plantations() {
                         Swollen ({plantation.maladie_swollen_shoot})
                       </Badge>
                     )}
+                  </div>
+
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="w-full gap-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(plantation.id);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Supprimer
+                    </Button>
                   </div>
                 </div>
               </div>

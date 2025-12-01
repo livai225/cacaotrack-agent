@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Filter, Loader2 } from "lucide-react";
+import { Search, Plus, Filter, Loader2, Trash2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "@/services/api";
 import { Producteur } from "@/types/organisation";
@@ -42,8 +42,20 @@ export default function Producteurs() {
     }
   };
 
+  const handleDelete = async (id: string) => {
+    if (confirm("Êtes-vous sûr de vouloir supprimer ce producteur ?")) {
+      try {
+        await api.deleteProducteur(id);
+        setProducteurs(producteurs.filter(p => p.id !== id));
+      } catch (error) {
+        console.error("Erreur suppression:", error);
+        alert("Erreur lors de la suppression");
+      }
+    }
+  };
+
   // Filtrage
-  const filteredProducteurs = producteurs.filter(p => 
+  const filteredProducteurs = producteurs.filter(p =>
     p.nom_complet.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.code.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -83,7 +95,7 @@ export default function Producteurs() {
       {/* Producteurs Grid */}
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : filteredProducteurs.length === 0 ? (
         <div className="text-center p-12 border-2 border-dashed rounded-lg">
@@ -92,8 +104,8 @@ export default function Producteurs() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredProducteurs.map((producteur) => (
-            <Card 
-              key={producteur.id} 
+            <Card
+              key={producteur.id}
               className="shadow-card hover:shadow-elevated transition-all cursor-pointer group"
               onClick={() => navigate(`/producteurs/${producteur.id}`)}
             >
@@ -120,9 +132,24 @@ export default function Producteurs() {
                       {producteur.code}
                     </p>
                     <div className="flex gap-2 mt-2 text-xs text-muted-foreground">
-                       <span>{producteur.cacao_nb_plantations} Plantation(s)</span>
-                       <span>•</span>
-                       <span>{producteur.cacao_superficie} Ha</span>
+                      <span>{producteur.cacao_nb_plantations} Plantation(s)</span>
+                      <span>•</span>
+                      <span>{producteur.cacao_superficie} Ha</span>
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-border">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="w-full gap-2"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(producteur.id);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Supprimer
+                      </Button>
                     </div>
                   </div>
                 </div>

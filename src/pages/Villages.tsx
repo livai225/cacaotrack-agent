@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Filter, MapPin, Loader2 } from "lucide-react";
+import { Search, Plus, Filter, MapPin, Loader2, Trash2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "@/services/api";
 import { Village } from "@/types/organisation";
@@ -39,7 +39,19 @@ export default function Villages() {
     }
   };
 
-  const filteredVillages = villages.filter(v => 
+  const handleDelete = async (id: string) => {
+    if (confirm("Êtes-vous sûr de vouloir supprimer ce village ?")) {
+      try {
+        await api.deleteVillage(id);
+        setVillages(villages.filter(v => v.id !== id));
+      } catch (error) {
+        console.error("Erreur suppression:", error);
+        alert("Erreur lors de la suppression");
+      }
+    }
+  };
+
+  const filteredVillages = villages.filter(v =>
     v.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
     v.localite.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -77,12 +89,12 @@ export default function Villages() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {isLoading ? (
-            <div className="col-span-full flex justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
+          <div className="col-span-full flex justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
         ) : filteredVillages.map((village) => (
-          <Card 
-            key={village.id} 
+          <Card
+            key={village.id}
             className="shadow-card hover:shadow-elevated transition-all cursor-pointer group"
             onClick={() => navigate(`/villages/${village.id}`)}
           >
@@ -101,7 +113,7 @@ export default function Villages() {
                       {village.statut}
                     </Badge>
                   </div>
-                  
+
                   <div className="space-y-1 text-xs mb-3">
                     <p className="text-muted-foreground">Chef: {village.chef_nom}</p>
                     <p className="font-mono text-primary">{village.code}</p>
@@ -131,6 +143,21 @@ export default function Villages() {
                       Accès eau
                     </Badge>
                   )}
+
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="w-full gap-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(village.id);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Supprimer
+                    </Button>
+                  </div>
                 </div>
               </div>
             </CardContent>

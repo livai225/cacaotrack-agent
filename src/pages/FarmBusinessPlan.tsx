@@ -74,7 +74,7 @@ export default function FarmBusinessPlan() {
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       <div className="flex items-center gap-4 mb-6">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/parcelles")}>
+        <Button variant="ghost" size="icon" onClick={() => navigate("/plantations")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
@@ -112,7 +112,7 @@ export default function FarmBusinessPlan() {
                 <Input name="prixCacao" value={inputs.prixCacao} onChange={handleInputChange} className="pl-8" type="number" />
               </div>
             </div>
-            
+
             <div className="pt-4 border-t space-y-4">
               <h3 className="font-semibold text-sm text-muted-foreground">Charges Annuelles (FCFA)</h3>
               <div className="grid grid-cols-2 gap-4">
@@ -143,7 +143,7 @@ export default function FarmBusinessPlan() {
 
         {/* Colonne Droite : Résultats et Graphiques */}
         <div className="lg:col-span-2 space-y-6">
-          
+
           {/* KPIs */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card className="bg-primary/10 border-primary/20">
@@ -177,7 +177,7 @@ export default function FarmBusinessPlan() {
               <TabsTrigger value="analyse">Analyse des Coûts</TabsTrigger>
               <TabsTrigger value="projection">Projections 5 Ans</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="analyse">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                 <Card>
@@ -188,7 +188,7 @@ export default function FarmBusinessPlan() {
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={dataWaterfall}>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" tick={{fontSize: 10}} />
+                        <XAxis dataKey="name" tick={{ fontSize: 10 }} />
                         <YAxis />
                         <Tooltip formatter={(value) => `${value.toLocaleString()} FCFA`} />
                         <Bar dataKey="montant" radius={[4, 4, 0, 0]} />
@@ -241,7 +241,7 @@ export default function FarmBusinessPlan() {
                       <Legend />
                       <Line type="monotone" dataKey="Revenus" stroke="#10b981" strokeWidth={2} />
                       <Line type="monotone" dataKey="Couts" stroke="#ef4444" strokeWidth={2} />
-                      <Line type="monotone" dataKey="Resultat" stroke="#3b82f6" strokeWidth={3} dot={{r: 6}} />
+                      <Line type="monotone" dataKey="Resultat" stroke="#3b82f6" strokeWidth={3} dot={{ r: 6 }} />
                     </LineChart>
                   </ResponsiveContainer>
                 </CardContent>

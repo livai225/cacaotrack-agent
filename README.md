@@ -1,73 +1,125 @@
-# Welcome to your Lovable project
+# 🍫 CacaoTrack - Système de Gestion de la Filière Cacao
 
-## Project info
+Application web complète pour la gestion de la filière cacao en Côte d'Ivoire, de la plantation à la commercialisation.
 
-**URL**: https://lovable.dev/projects/5a06d3d2-a5af-400f-bbf9-860c33ed83ee
+## 🚀 Démarrage rapide
 
-## How can I edit this code?
-
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/5a06d3d2-a5af-400f-bbf9-860c33ed83ee) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+### Backend
+```bash
+cd server
+npm install
+npm run db:push
+npm run db:seed
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Frontend
+```bash
+npm install
+npm run dev
+```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 📚 Documentation
 
-**Use GitHub Codespaces**
+Toute la documentation est disponible dans le dossier [`docs/`](./docs/) :
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### 🎯 Guides principaux
+- [📖 README CacaoTrack](./docs/README_CACAOTRACK.md) - Guide complet du projet
+- [📑 Index Documentation](./docs/INDEX_DOCUMENTATION.md) - Navigation dans la documentation
 
-## What technologies are used for this project?
+### 🗺️ Module Agent
+- [👤 Guide Module Agent](./docs/MODULE_AGENT.md) - Gestion des agents
+- [🌍 Régions de Côte d'Ivoire](./docs/REGIONS_COTE_IVOIRE.md) - Liste des 33 régions
+- [📊 Aperçu Module Agent](./docs/APERCU_MODULE_AGENT.md) - Interface visuelle
 
-This project is built with:
+### 📡 Mode Hors Ligne
+- [📱 Guide Mode Hors Ligne](./docs/GUIDE_MODE_HORS_LIGNE.md) - Guide utilisateur
+- [🔧 Documentation Technique](./docs/MODE_HORS_LIGNE.md) - Guide développeur
+- [📋 Résumé](./docs/RESUME_MODE_HORS_LIGNE.md) - Vue d'ensemble
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### 🎨 Design
+- [🎨 Design Opérations](./docs/DESIGN_OPERATIONS.md) - Page des opérations
 
-## How can I deploy this project?
+### 🔧 Corrections & Améliorations
+- [🐛 Fix Boucle Infinie](./docs/FIX_BOUCLE_INFINIE.md)
+- [🐛 Fix Payload Too Large](./docs/FIX_PAYLOAD_TOO_LARGE.md)
+- [🔍 Debug Régions](./docs/DEBUG_REGIONS.md)
 
-Simply open [Lovable](https://lovable.dev/projects/5a06d3d2-a5af-400f-bbf9-860c33ed83ee) and click on Share -> Publish.
+### 📝 Historique
+- [📋 Changelog Complet](./docs/CHANGELOG_COMPLET.md) - Toutes les versions
+- [📋 Changelog Régions](./docs/CHANGELOG_REGIONS.md) - Module régions
+- [✅ Travail Terminé](./docs/TRAVAIL_TERMINE.md) - Récapitulatif
 
-## Can I connect a custom domain to my Lovable project?
+## ✨ Fonctionnalités principales
 
-Yes, you can!
+### 🏢 Gestion des Organisations
+- Coopératives, GIE, Associations
+- Sections et villages
+- Membres et producteurs
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### 👨‍🌾 Gestion des Producteurs
+- Informations personnelles
+- Parcelles et plantations
+- Historique des opérations
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+### 🗺️ Gestion des Parcelles
+- Géolocalisation GPS
+- Itinéraire technique
+- Suivi des maladies
+
+### 📦 Gestion des Opérations
+- 7 étapes du processus
+- Suivi de la progression
+- Paiements
+
+### 👤 Module Agent
+- 33 régions de Côte d'Ivoire
+- Affectation multi-régions
+- Dashboard de suivi
+- Recherche de régions
+
+### 📡 Mode Hors Ligne
+- Travail sans connexion
+- Sauvegarde locale
+- Synchronisation manuelle
+- Gestion des erreurs
+
+## 🛠️ Technologies
+
+- **Backend:** Express.js + Prisma + MySQL
+- **Frontend:** React + TypeScript + Vite
+- **UI:** Tailwind CSS + shadcn/ui
+- **Validation:** Zod + React Hook Form
+- **Charts:** Recharts
+- **Maps:** Mapbox GL
+
+## 📊 Versions
+
+- **Version actuelle:** 2.3.0
+- **Dernière mise à jour:** 24 Novembre 2024
+- **Statut:** ✅ Production Ready
+
+## 🎯 Modules disponibles
+
+- ✅ Organisations
+- ✅ Sections
+- ✅ Villages
+- ✅ Producteurs
+- ✅ Parcelles
+- ✅ Opérations
+- ✅ Agents (33 régions)
+- ✅ Mode Hors Ligne
+- ✅ Synchronisation
+- ✅ Cartographie
+
+## 📞 Support
+
+Pour toute question, consulter la [documentation complète](./docs/INDEX_DOCUMENTATION.md).
+
+## 📄 Licence
+
+Propriétaire - Tous droits réservés
+
+---
+
+**🍫 CacaoTrack** - Gestion de la filière cacao en Côte d'Ivoire

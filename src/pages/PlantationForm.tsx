@@ -1,7 +1,8 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,9 +12,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import PhotoCapture from "@/components/forms/PhotoCapture";
 import GPSCapture from "@/components/forms/GPSCapture";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { generatePlantationCode } from "@/utils/codeGenerators";
+import { api } from "@/services/api";
 
 const niveauxMaladie = ["Inexistant", "Très peu", "Peu", "Important"] as const;
 const niveauxIntrant = ["Peu", "Moyen", "A dose recommandée", "Jamais"] as const;
@@ -21,7 +23,7 @@ const frequencesConseil = ["Jamais", "01 fois par an", "01 fois par semestre", "
 
 const parcelleSchema = z.object({
   id_producteur: z.string().min(1, "Producteur requis"),
-  
+
   // Infos Générales
   age_plantation: z.number().min(0),
   superficie_declaree: z.number().min(0),
@@ -109,8 +111,11 @@ type ParcelleFormData = z.infer<typeof parcelleSchema>;
 
 export default function ParcelleForm() {
   const navigate = useNavigate();
-  
-  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<ParcelleFormData>({
+  const { id } = useParams();
+  const isEdit = !!id;
+  const [isLoading, setIsLoading] = useState(false);
+
+  const { register, handleSubmit, formState: { errors }, setValue, watch, reset } = useForm<ParcelleFormData>({
     resolver: zodResolver(parcelleSchema),
     defaultValues: {
       age_plantation: 0,
@@ -151,14 +156,41 @@ export default function ParcelleForm() {
     }
   });
 
-  const onSubmit = (data: ParcelleFormData) => {
+  // Load existing data when editing
+  useEffect(() => {
+    if (isEdit && id) {
+      setIsLoading(true);
+      api.getParcelle(id)
+        .then((parcelle: any) => {
+          reset(parcelle);
+        })
+        .catch((error) => {
+          console.error("Error loading parcelle:", error);
+          toast.error("Erreur lors du chargement de la plantation");
+          navigate("/plantations");
+        })
+        .finally(() => setIsLoading(false));
+    }
+  }, [id, isEdit, reset, navigate]);
+
+  const onSubmit = async (data: ParcelleFormData) => {
+    setIsLoading(true);
     try {
-      const code = generatePlantationCode("PROD-001", Math.floor(Math.random() * 10));
-      console.log("Plantation créée:", { code, ...data });
-      toast.success(`Plantation ${code} enregistrée avec succès`);
-      navigate("/parcelles"); // Assumons que cette route existe ou existera
+      if (isEdit && id) {
+        await api.updateParcelle(id, data);
+        toast.success("Plantation mise à jour avec succès");
+        navigate(`/plantations/${id}`);
+      } else {
+        const code = generatePlantationCode("PROD-001", Math.floor(Math.random() * 10));
+        console.log("Plantation créée:", { code, ...data });
+        toast.success(`Plantation ${code} enregistrée avec succès`);
+        navigate("/plantations");
+      }
     } catch (error) {
-      toast.error("Erreur lors de l'enregistrement");
+      console.error("Error saving parcelle:", error);
+      toast.error(isEdit ? "Erreur lors de la mise à jour" : "Erreur lors de l'enregistrement");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -178,60 +210,60 @@ export default function ParcelleForm() {
 
   const renderCommFields = (prefix: string, title: string, hasNameField: boolean = false) => (
     <div className="border p-4 rounded space-y-3">
-       <div className="flex items-center gap-2">
-         <Checkbox checked={watch(`${prefix}` as any)} onCheckedChange={(chk) => setValue(`${prefix}` as any, !!chk)} />
-         <Label className="font-bold">{title}</Label>
-       </div>
-       
-       {watch(`${prefix}` as any) && (
-         <div className="space-y-3 pl-6 border-l-2 border-primary/20">
-            {hasNameField && (
-              <div>
-                <Label>Noms (séparés par virgule)</Label>
-                <Input {...register(`${prefix}_noms` as any)} />
-              </div>
-            )}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <Label>% Quantité concernée</Label>
-                <Input type="number" {...register(`${prefix}_pct` as any, { valueAsNumber: true })} />
-              </div>
-              <div>
-                <Label>Taux Loyauté (%)</Label>
-                <Input type="number" {...register(`${prefix}_loyaute` as any, { valueAsNumber: true })} />
-              </div>
-              <div>
-                <Label>Lieu de vente</Label>
-                <Input {...register(`${prefix}_lieu` as any)} />
-              </div>
-              <div>
-                <Label>Prix Campagne (FCFA)</Label>
-                <Input type="number" {...register(`${prefix}_prix_campagne` as any, { valueAsNumber: true })} />
-              </div>
-              <div>
-                <Label>Prix Intermédiaire (FCFA)</Label>
-                <Input type="number" {...register(`${prefix}_prix_intermediaire` as any, { valueAsNumber: true })} />
-              </div>
+      <div className="flex items-center gap-2">
+        <Checkbox checked={watch(`${prefix}` as any)} onCheckedChange={(chk) => setValue(`${prefix}` as any, !!chk)} />
+        <Label className="font-bold">{title}</Label>
+      </div>
+
+      {watch(`${prefix}` as any) && (
+        <div className="space-y-3 pl-6 border-l-2 border-primary/20">
+          {hasNameField && (
+            <div>
+              <Label>Noms (séparés par virgule)</Label>
+              <Input {...register(`${prefix}_noms` as any)} />
             </div>
-         </div>
-       )}
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <Label>% Quantité concernée</Label>
+              <Input type="number" {...register(`${prefix}_pct` as any, { valueAsNumber: true })} />
+            </div>
+            <div>
+              <Label>Taux Loyauté (%)</Label>
+              <Input type="number" {...register(`${prefix}_loyaute` as any, { valueAsNumber: true })} />
+            </div>
+            <div>
+              <Label>Lieu de vente</Label>
+              <Input {...register(`${prefix}_lieu` as any)} />
+            </div>
+            <div>
+              <Label>Prix Campagne (FCFA)</Label>
+              <Input type="number" {...register(`${prefix}_prix_campagne` as any, { valueAsNumber: true })} />
+            </div>
+            <div>
+              <Label>Prix Intermédiaire (FCFA)</Label>
+              <Input type="number" {...register(`${prefix}_prix_intermediaire` as any, { valueAsNumber: true })} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
   return (
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/parcelles")}>
+        <Button variant="ghost" size="icon" onClick={() => navigate("/plantations")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Nouvelle Plantation</h1>
+          <h1 className="text-3xl font-bold text-foreground">{isEdit ? "Modifier Plantation" : "Nouvelle Plantation"}</h1>
           <p className="text-muted-foreground">Enregistrement d'une parcelle de cacao</p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-        
+
         {/* 1. Infos Générales */}
         <Card>
           <CardHeader>
@@ -239,59 +271,59 @@ export default function ParcelleForm() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               <div>
-                 <Label>Producteur Propriétaire *</Label>
-                 <Select onValueChange={(v) => setValue("id_producteur", v)}>
-                   <SelectTrigger><SelectValue placeholder="Sélectionner un producteur..." /></SelectTrigger>
-                   <SelectContent>
-                     <SelectItem value="PROD-001">Kouassi Jean</SelectItem>
-                   </SelectContent>
-                 </Select>
-                 {errors.id_producteur && <p className="text-destructive text-sm">Requis</p>}
-               </div>
-               <div>
-                 <Label>Âge de la plantation (années)</Label>
-                 <Input type="number" {...register("age_plantation", { valueAsNumber: true })} />
-               </div>
+              <div>
+                <Label>Producteur Propriétaire *</Label>
+                <Select onValueChange={(v) => setValue("id_producteur", v)}>
+                  <SelectTrigger><SelectValue placeholder="Sélectionner un producteur..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PROD-001">Kouassi Jean</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.id_producteur && <p className="text-destructive text-sm">Requis</p>}
+              </div>
+              <div>
+                <Label>Âge de la plantation (années)</Label>
+                <Input type="number" {...register("age_plantation", { valueAsNumber: true })} />
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-               <div>
-                 <Label>Superficie Déclarée (Ha)</Label>
-                 <Input type="number" step="0.01" {...register("superficie_declaree", { valueAsNumber: true })} />
-               </div>
-               <div>
-                 <Label>Superficie Réelle GPS (Ha)</Label>
-                 <Input type="number" step="0.01" {...register("superficie_reelle", { valueAsNumber: true })} />
-               </div>
-               <div>
-                 <Label>Production Déclarée (T)</Label>
-                 <Input type="number" step="0.01" {...register("production_declaree", { valueAsNumber: true })} />
-               </div>
+              <div>
+                <Label>Superficie Déclarée (Ha)</Label>
+                <Input type="number" step="0.01" {...register("superficie_declaree", { valueAsNumber: true })} />
+              </div>
+              <div>
+                <Label>Superficie Réelle GPS (Ha)</Label>
+                <Input type="number" step="0.01" {...register("superficie_reelle", { valueAsNumber: true })} />
+              </div>
+              <div>
+                <Label>Production Déclarée (T)</Label>
+                <Input type="number" step="0.01" {...register("production_declaree", { valueAsNumber: true })} />
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-               <div>
-                 <Label>Distance Magasin (Km)</Label>
-                 <Input type="number" step="0.1" {...register("distance_magasin", { valueAsNumber: true })} />
-               </div>
-               <div>
-                 <Label>Densité (plants/ha)</Label>
-                 <Input type="number" {...register("densite", { valueAsNumber: true })} />
-               </div>
-               <div>
-                 <Label>Arbres d'ombrage (Nb)</Label>
-                 <Input type="number" {...register("nb_arbres_ombrage", { valueAsNumber: true })} />
-               </div>
+              <div>
+                <Label>Distance Magasin (Km)</Label>
+                <Input type="number" step="0.1" {...register("distance_magasin", { valueAsNumber: true })} />
+              </div>
+              <div>
+                <Label>Densité (plants/ha)</Label>
+                <Input type="number" {...register("densite", { valueAsNumber: true })} />
+              </div>
+              <div>
+                <Label>Arbres d'ombrage (Nb)</Label>
+                <Input type="number" {...register("nb_arbres_ombrage", { valueAsNumber: true })} />
+              </div>
             </div>
 
             <div className="border-t pt-4">
-               <Label className="mb-2 block font-semibold">Localisation (Centroïde)</Label>
-               <GPSCapture 
-                 onChange={(c) => { setValue("latitude", c.latitude); setValue("longitude", c.longitude); }}
-                 latitude={watch("latitude")}
-                 longitude={watch("longitude")}
-               />
+              <Label className="mb-2 block font-semibold">Localisation (Centroïde)</Label>
+              <GPSCapture
+                onChange={(c) => { setValue("latitude", c.latitude); setValue("longitude", c.longitude); }}
+                latitude={watch("latitude")}
+                longitude={watch("longitude")}
+              />
             </div>
 
             <PhotoCapture label="Photo Plantation" value={watch("photo")} onChange={(v) => setValue("photo", v)} />
@@ -304,27 +336,27 @@ export default function ParcelleForm() {
             <CardTitle className="bg-primary/10 p-2 rounded text-primary">Santé de la plantation</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-               <div>
-                 <h3 className="font-bold text-lg mb-4 text-destructive/80">Principales Maladies</h3>
-                 <div className="space-y-4">
-                   {renderRadioBlock("maladie_pourriture_brune", "Pourritures brunes", niveauxMaladie)}
-                   {renderRadioBlock("maladie_swollen_shoot", "Swollen shoot", niveauxMaladie)}
-                   {renderRadioBlock("maladie_parasites", "Parasites", niveauxMaladie)}
-                   {renderRadioBlock("maladie_autre", "Autres", niveauxMaladie)}
-                 </div>
-               </div>
-               <div>
-                 <h3 className="font-bold text-lg mb-4 text-blue-600">Utilisation Intrants</h3>
-                 <div className="space-y-4">
-                   {renderRadioBlock("engrais", "Engrais", niveauxIntrant)}
-                   {renderRadioBlock("pesticides", "Pesticides", niveauxIntrant)}
-                   {renderRadioBlock("insecticides", "Insecticides", niveauxIntrant)}
-                   {renderRadioBlock("fongicides", "Fongicides", niveauxIntrant)}
-                   {renderRadioBlock("herbicides", "Herbicides", niveauxIntrant)}
-                 </div>
-               </div>
-             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div>
+                <h3 className="font-bold text-lg mb-4 text-destructive/80">Principales Maladies</h3>
+                <div className="space-y-4">
+                  {renderRadioBlock("maladie_pourriture_brune", "Pourritures brunes", niveauxMaladie)}
+                  {renderRadioBlock("maladie_swollen_shoot", "Swollen shoot", niveauxMaladie)}
+                  {renderRadioBlock("maladie_parasites", "Parasites", niveauxMaladie)}
+                  {renderRadioBlock("maladie_autre", "Autres", niveauxMaladie)}
+                </div>
+              </div>
+              <div>
+                <h3 className="font-bold text-lg mb-4 text-blue-600">Utilisation Intrants</h3>
+                <div className="space-y-4">
+                  {renderRadioBlock("engrais", "Engrais", niveauxIntrant)}
+                  {renderRadioBlock("pesticides", "Pesticides", niveauxIntrant)}
+                  {renderRadioBlock("insecticides", "Insecticides", niveauxIntrant)}
+                  {renderRadioBlock("fongicides", "Fongicides", niveauxIntrant)}
+                  {renderRadioBlock("herbicides", "Herbicides", niveauxIntrant)}
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -334,39 +366,39 @@ export default function ParcelleForm() {
             <CardTitle className="bg-primary/10 p-2 rounded text-primary">Pratiques Agricoles</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-               <div className="space-y-4">
-                 <h3 className="font-semibold">Conseil Agricole</h3>
-                 <div className="flex flex-col gap-2">
-                   <div className="flex items-center gap-2"><Checkbox checked={watch("conseil_anader")} onCheckedChange={(c) => setValue("conseil_anader", !!c)} /><Label>Anader</Label></div>
-                   <div className="flex items-center gap-2"><Checkbox checked={watch("conseil_partenaires")} onCheckedChange={(c) => setValue("conseil_partenaires", !!c)} /><Label>Partenaires Commerciaux</Label></div>
-                   <div className="flex items-center gap-2"><Checkbox checked={watch("conseil_prives")} onCheckedChange={(c) => setValue("conseil_prives", !!c)} /><Label>Cabinets privés</Label></div>
-                 </div>
-                 <div>
-                   <Label>Fréquence</Label>
-                   <Select onValueChange={(v) => setValue("conseil_frequence", v as any)} defaultValue="Jamais">
-                     <SelectTrigger><SelectValue /></SelectTrigger>
-                     <SelectContent>
-                       {frequencesConseil.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
-                     </SelectContent>
-                   </Select>
-                 </div>
-                 <div className="flex items-center gap-2 pt-2">
-                   <Checkbox checked={watch("conseil_interet")} onCheckedChange={(c) => setValue("conseil_interet", !!c)} />
-                   <Label className="font-medium">Intérêt pour le conseil agricole</Label>
-                 </div>
-               </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <h3 className="font-semibold">Conseil Agricole</h3>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2"><Checkbox checked={watch("conseil_anader")} onCheckedChange={(c) => setValue("conseil_anader", !!c)} /><Label>Anader</Label></div>
+                  <div className="flex items-center gap-2"><Checkbox checked={watch("conseil_partenaires")} onCheckedChange={(c) => setValue("conseil_partenaires", !!c)} /><Label>Partenaires Commerciaux</Label></div>
+                  <div className="flex items-center gap-2"><Checkbox checked={watch("conseil_prives")} onCheckedChange={(c) => setValue("conseil_prives", !!c)} /><Label>Cabinets privés</Label></div>
+                </div>
+                <div>
+                  <Label>Fréquence</Label>
+                  <Select onValueChange={(v) => setValue("conseil_frequence", v as any)} defaultValue="Jamais">
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {frequencesConseil.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2 pt-2">
+                  <Checkbox checked={watch("conseil_interet")} onCheckedChange={(c) => setValue("conseil_interet", !!c)} />
+                  <Label className="font-medium">Intérêt pour le conseil agricole</Label>
+                </div>
+              </div>
 
-               <div className="space-y-4">
-                 <h3 className="font-semibold">Séchage</h3>
-                 <div className="flex flex-col gap-2">
-                   <div className="flex items-center gap-2"><Checkbox checked={watch("sechage_claie_hauteur")} onCheckedChange={(c) => setValue("sechage_claie_hauteur", !!c)} /><Label>Claie en hauteur</Label></div>
-                   <div className="flex items-center gap-2"><Checkbox checked={watch("sechage_claie_sol")} onCheckedChange={(c) => setValue("sechage_claie_sol", !!c)} /><Label>Claie au sol</Label></div>
-                   <div className="flex items-center gap-2"><Checkbox checked={watch("sechage_plastique_sol")} onCheckedChange={(c) => setValue("sechage_plastique_sol", !!c)} /><Label>Plastique au sol</Label></div>
-                   <div className="flex items-center gap-2"><Checkbox checked={watch("sechage_ciment")} onCheckedChange={(c) => setValue("sechage_ciment", !!c)} /><Label>Ciment (terrasse)</Label></div>
-                 </div>
-               </div>
-             </div>
+              <div className="space-y-4">
+                <h3 className="font-semibold">Séchage</h3>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2"><Checkbox checked={watch("sechage_claie_hauteur")} onCheckedChange={(c) => setValue("sechage_claie_hauteur", !!c)} /><Label>Claie en hauteur</Label></div>
+                  <div className="flex items-center gap-2"><Checkbox checked={watch("sechage_claie_sol")} onCheckedChange={(c) => setValue("sechage_claie_sol", !!c)} /><Label>Claie au sol</Label></div>
+                  <div className="flex items-center gap-2"><Checkbox checked={watch("sechage_plastique_sol")} onCheckedChange={(c) => setValue("sechage_plastique_sol", !!c)} /><Label>Plastique au sol</Label></div>
+                  <div className="flex items-center gap-2"><Checkbox checked={watch("sechage_ciment")} onCheckedChange={(c) => setValue("sechage_ciment", !!c)} /><Label>Ciment (terrasse)</Label></div>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -376,25 +408,25 @@ export default function ParcelleForm() {
             <CardTitle className="bg-primary/10 p-2 rounded text-primary">Equipements Planteur</CardTitle>
           </CardHeader>
           <CardContent>
-             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-               {[
-                 ["equipement_machettes", "Machettes"],
-                 ["equipement_gourdins", "Gourdins"],
-                 ["equipement_limes", "Limes"],
-                 ["equipement_houe", "Houe"],
-                 ["equipement_secateur", "Sécateur"],
-                 ["equipement_combinaison", "Combinaison (Phyto)"],
-                 ["equipement_gants", "Gants Nitrile"],
-                 ["equipement_lunettes", "Lunettes protection"],
-                 ["equipement_masque", "Masque protection"],
-                 ["equipement_bottes", "Bottes"],
-               ].map(([key, label]) => (
-                 <div key={key} className="flex items-center gap-2 p-2 border rounded hover:bg-accent">
-                   <Checkbox checked={watch(key as any)} onCheckedChange={(c) => setValue(key as any, !!c)} />
-                   <Label>{label}</Label>
-                 </div>
-               ))}
-             </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                ["equipement_machettes", "Machettes"],
+                ["equipement_gourdins", "Gourdins"],
+                ["equipement_limes", "Limes"],
+                ["equipement_houe", "Houe"],
+                ["equipement_secateur", "Sécateur"],
+                ["equipement_combinaison", "Combinaison (Phyto)"],
+                ["equipement_gants", "Gants Nitrile"],
+                ["equipement_lunettes", "Lunettes protection"],
+                ["equipement_masque", "Masque protection"],
+                ["equipement_bottes", "Bottes"],
+              ].map(([key, label]) => (
+                <div key={key} className="flex items-center gap-2 p-2 border rounded hover:bg-accent">
+                  <Checkbox checked={watch(key as any)} onCheckedChange={(c) => setValue(key as any, !!c)} />
+                  <Label>{label}</Label>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
 
@@ -412,12 +444,12 @@ export default function ParcelleForm() {
         </Card>
 
         <div className="flex gap-4 justify-end pt-4">
-          <Button type="button" variant="outline" size="lg" onClick={() => navigate("/parcelles")}>
+          <Button type="button" variant="outline" size="lg" onClick={() => navigate("/plantations")}>
             Annuler
           </Button>
-          <Button type="submit" size="lg" className="gap-2 bg-primary hover:bg-primary/90">
-            <Save className="h-5 w-5" />
-            Enregistrer la Plantation
+          <Button type="submit" size="lg" className="gap-2 bg-primary hover:bg-primary/90" disabled={isLoading}>
+            {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+            {isEdit ? "Mettre à jour" : "Enregistrer la Plantation"}
           </Button>
         </div>
       </form>

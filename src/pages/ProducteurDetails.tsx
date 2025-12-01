@@ -70,8 +70,8 @@ export default function ProducteurDetails() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="relative">
-            <img 
-              src={producteur.photo_planteur || `https://api.dicebear.com/7.x/avataaars/svg?seed=${producteur.nom_complet}`} 
+            <img
+              src={producteur.photo_planteur || `https://api.dicebear.com/7.x/avataaars/svg?seed=${producteur.nom_complet}`}
               alt={producteur.nom_complet}
               className="w-20 h-20 rounded-full border-4 border-background shadow-lg bg-white"
             />
@@ -87,13 +87,13 @@ export default function ProducteurDetails() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">Modifier</Button>
+          <Button variant="outline" onClick={() => navigate(`/producteurs/${id}/edit`)}>Modifier</Button>
           <Button variant="destructive">Archiver</Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* Colonne Gauche: Identité & Localisation */}
         <div className="space-y-6">
           <Card>
@@ -117,55 +117,55 @@ export default function ProducteurDetails() {
 
         {/* Colonne Centrale: Ménage & Social */}
         <div className="space-y-6">
-           <Card>
-             <CardHeader><CardTitle>Ménage & Famille</CardTitle></CardHeader>
-             <CardContent className="grid grid-cols-2 gap-4">
-               <div className="text-center p-4 bg-blue-50 rounded-lg">
-                 <span className="block text-3xl font-bold text-blue-600">{producteur.nb_enfants}</span>
-                 <span className="text-xs text-blue-800 font-semibold uppercase">Enfants</span>
-               </div>
-               <div className="text-center p-4 bg-green-50 rounded-lg">
-                 <span className="block text-3xl font-bold text-green-600">{producteur.nb_enfants_scolarises}</span>
-                 <span className="text-xs text-green-800 font-semibold uppercase">Scolarisés</span>
-               </div>
-               <div className="col-span-2 space-y-2 mt-2">
-                  <div className="flex justify-between text-sm border-b pb-1"><span>Filles</span> <span className="font-bold">{producteur.nb_filles}</span></div>
-                  <div className="flex justify-between text-sm border-b pb-1"><span>Garçons</span> <span className="font-bold">{producteur.nb_garcons}</span></div>
-                  <div className="flex justify-between text-sm border-b pb-1"><span>Moins de 5 ans</span> <span className="font-bold">{producteur.nb_moins_5_ans}</span></div>
-               </div>
-             </CardContent>
-           </Card>
+          <Card>
+            <CardHeader><CardTitle>Ménage & Famille</CardTitle></CardHeader>
+            <CardContent className="grid grid-cols-2 gap-4">
+              <div className="text-center p-4 bg-blue-50 rounded-lg">
+                <span className="block text-3xl font-bold text-blue-600">{producteur.nb_enfants}</span>
+                <span className="text-xs text-blue-800 font-semibold uppercase">Enfants</span>
+              </div>
+              <div className="text-center p-4 bg-green-50 rounded-lg">
+                <span className="block text-3xl font-bold text-green-600">{producteur.nb_enfants_scolarises}</span>
+                <span className="text-xs text-green-800 font-semibold uppercase">Scolarisés</span>
+              </div>
+              <div className="col-span-2 space-y-2 mt-2">
+                <div className="flex justify-between text-sm border-b pb-1"><span>Filles</span> <span className="font-bold">{producteur.nb_filles}</span></div>
+                <div className="flex justify-between text-sm border-b pb-1"><span>Garçons</span> <span className="font-bold">{producteur.nb_garcons}</span></div>
+                <div className="flex justify-between text-sm border-b pb-1"><span>Moins de 5 ans</span> <span className="font-bold">{producteur.nb_moins_5_ans}</span></div>
+              </div>
+            </CardContent>
+          </Card>
 
-           <Card>
-             <CardHeader><CardTitle>Conditions de Vie</CardTitle></CardHeader>
-             <CardContent className="space-y-4">
-               <div>
-                 <h4 className="font-semibold text-sm mb-2 flex items-center gap-2"><Droplets className="h-4 w-4 text-cyan-500"/> Accès à l'Eau</h4>
-                 <div className="flex flex-wrap gap-2">
-                   {producteur.eau_courante && <Badge variant="secondary">Eau Courante</Badge>}
-                   {producteur.pompe_hydraulique && <Badge variant="secondary">Pompe Hydraulique</Badge>}
-                   {producteur.puits && <Badge variant="secondary">Puits</Badge>}
-                   {producteur.riviere_marigot && <Badge variant="destructive">Rivière / Marigot</Badge>}
-                 </div>
-               </div>
-               <div>
-                 <h4 className="font-semibold text-sm mb-2 flex items-center gap-2"><Zap className="h-4 w-4 text-yellow-500"/> Électricité</h4>
-                 <div className="flex flex-wrap gap-2">
-                   {producteur.electricite_reseau && <Badge variant="secondary">Réseau</Badge>}
-                   {producteur.electricite_solaire && <Badge variant="secondary">Solaire</Badge>}
-                   {producteur.electricite_lampe && <Badge variant="outline">Lampe</Badge>}
-                   {producteur.electricite_aucun && <Badge variant="destructive">Aucun</Badge>}
-                 </div>
-               </div>
-               <div>
-                 <h4 className="font-semibold text-sm mb-2 flex items-center gap-2"><Home className="h-4 w-4 text-orange-500"/> Habitat</h4>
-                 <div className="text-sm grid grid-cols-2 gap-2">
-                    <div className="bg-muted p-2 rounded">Mur: <b>{producteur.materiaux_mur}</b></div>
-                    <div className="bg-muted p-2 rounded">Toit: <b>{producteur.toiture}</b></div>
-                 </div>
-               </div>
-             </CardContent>
-           </Card>
+          <Card>
+            <CardHeader><CardTitle>Conditions de Vie</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <h4 className="font-semibold text-sm mb-2 flex items-center gap-2"><Droplets className="h-4 w-4 text-cyan-500" /> Accès à l'Eau</h4>
+                <div className="flex flex-wrap gap-2">
+                  {producteur.eau_courante && <Badge variant="secondary">Eau Courante</Badge>}
+                  {producteur.pompe_hydraulique && <Badge variant="secondary">Pompe Hydraulique</Badge>}
+                  {producteur.puits && <Badge variant="secondary">Puits</Badge>}
+                  {producteur.riviere_marigot && <Badge variant="destructive">Rivière / Marigot</Badge>}
+                </div>
+              </div>
+              <div>
+                <h4 className="font-semibold text-sm mb-2 flex items-center gap-2"><Zap className="h-4 w-4 text-yellow-500" /> Électricité</h4>
+                <div className="flex flex-wrap gap-2">
+                  {producteur.electricite_reseau && <Badge variant="secondary">Réseau</Badge>}
+                  {producteur.electricite_solaire && <Badge variant="secondary">Solaire</Badge>}
+                  {producteur.electricite_lampe && <Badge variant="outline">Lampe</Badge>}
+                  {producteur.electricite_aucun && <Badge variant="destructive">Aucun</Badge>}
+                </div>
+              </div>
+              <div>
+                <h4 className="font-semibold text-sm mb-2 flex items-center gap-2"><Home className="h-4 w-4 text-orange-500" /> Habitat</h4>
+                <div className="text-sm grid grid-cols-2 gap-2">
+                  <div className="bg-muted p-2 rounded">Mur: <b>{producteur.materiaux_mur}</b></div>
+                  <div className="bg-muted p-2 rounded">Toit: <b>{producteur.toiture}</b></div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Colonne Droite: Production & Finances */}
@@ -173,35 +173,35 @@ export default function ProducteurDetails() {
           <Card className="bg-primary/5 border-primary/20">
             <CardHeader><CardTitle className="text-primary">Production Cacao</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-               <div className="flex justify-between items-center p-3 bg-white rounded shadow-sm">
-                 <span className="text-muted-foreground">Plantations</span>
-                 <span className="text-xl font-bold">{producteur.cacao_nb_plantations}</span>
-               </div>
-               <div className="flex justify-between items-center p-3 bg-white rounded shadow-sm">
-                 <span className="text-muted-foreground">Superficie Totale</span>
-                 <span className="text-xl font-bold">{producteur.cacao_superficie} Ha</span>
-               </div>
-               <div className="flex justify-between items-center p-3 bg-white rounded shadow-sm">
-                 <span className="text-muted-foreground">Dernière Récolte</span>
-                 <span className="text-xl font-bold text-green-600">{producteur.cacao_production} T</span>
-               </div>
+              <div className="flex justify-between items-center p-3 bg-white rounded shadow-sm">
+                <span className="text-muted-foreground">Plantations</span>
+                <span className="text-xl font-bold">{producteur.cacao_nb_plantations}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-white rounded shadow-sm">
+                <span className="text-muted-foreground">Superficie Totale</span>
+                <span className="text-xl font-bold">{producteur.cacao_superficie} Ha</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-white rounded shadow-sm">
+                <span className="text-muted-foreground">Dernière Récolte</span>
+                <span className="text-xl font-bold text-green-600">{producteur.cacao_production} T</span>
+              </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader><CardTitle>Inclusion Financière</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-               <div className="space-y-2">
-                 <div className="flex justify-between text-sm"><span>Compte Bancaire</span> {producteur.interet_compte_bancaire ? <Badge className="bg-green-500">Oui</Badge> : <Badge variant="outline">Non</Badge>}</div>
-                 <div className="flex justify-between text-sm"><span>Épargne</span> {producteur.interet_epargne ? <Badge className="bg-green-500">Oui</Badge> : <Badge variant="outline">Non</Badge>}</div>
-               </div>
-               <div className="pt-2 border-t">
-                 <p className="text-xs font-semibold mb-2 uppercase text-muted-foreground">Moyens de Paiement</p>
-                 <div className="grid grid-cols-2 gap-2 text-xs">
-                   <div className="flex justify-between"><span>Mobile Money</span> <b>{producteur.usage_mobile_money}</b></div>
-                   <div className="flex justify-between"><span>Espèces</span> <b>{producteur.usage_especes}</b></div>
-                 </div>
-               </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm"><span>Compte Bancaire</span> {producteur.interet_compte_bancaire ? <Badge className="bg-green-500">Oui</Badge> : <Badge variant="outline">Non</Badge>}</div>
+                <div className="flex justify-between text-sm"><span>Épargne</span> {producteur.interet_epargne ? <Badge className="bg-green-500">Oui</Badge> : <Badge variant="outline">Non</Badge>}</div>
+              </div>
+              <div className="pt-2 border-t">
+                <p className="text-xs font-semibold mb-2 uppercase text-muted-foreground">Moyens de Paiement</p>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="flex justify-between"><span>Mobile Money</span> <b>{producteur.usage_mobile_money}</b></div>
+                  <div className="flex justify-between"><span>Espèces</span> <b>{producteur.usage_especes}</b></div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>

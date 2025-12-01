@@ -1,6 +1,6 @@
 import { Organisation, Section, Village, Producteur, Parcelle, Operation } from "@/types/organisation";
 
-const API_URL = "http://localhost:3000/api";
+const API_URL = import.meta.env.VITE_API_URL || "/api";
 
 export const api = {
   // Organisations
@@ -14,6 +14,19 @@ export const api = {
     if (!res.ok) throw new Error("Erreur chargement organisation");
     return res.json();
   },
+  updateOrganisation: async (id: string, data: any): Promise<Organisation> => {
+    const res = await fetch(`${API_URL}/organisations/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error("Erreur mise à jour organisation");
+    return res.json();
+  },
+  deleteOrganisation: async (id: string): Promise<void> => {
+    const res = await fetch(`${API_URL}/organisations/${id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Erreur suppression organisation");
+  },
 
   // Sections
   getSections: async (): Promise<Section[]> => {
@@ -25,6 +38,19 @@ export const api = {
     const res = await fetch(`${API_URL}/sections/${id}`);
     if (!res.ok) throw new Error("Erreur chargement section");
     return res.json();
+  },
+  updateSection: async (id: string, data: any): Promise<Section> => {
+    const res = await fetch(`${API_URL}/sections/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error("Erreur mise à jour section");
+    return res.json();
+  },
+  deleteSection: async (id: string): Promise<void> => {
+    const res = await fetch(`${API_URL}/sections/${id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Erreur suppression section");
   },
 
   // Villages
@@ -38,6 +64,19 @@ export const api = {
     if (!res.ok) throw new Error("Erreur chargement village");
     return res.json();
   },
+  updateVillage: async (id: string, data: any): Promise<Village> => {
+    const res = await fetch(`${API_URL}/villages/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error("Erreur mise à jour village");
+    return res.json();
+  },
+  deleteVillage: async (id: string): Promise<void> => {
+    const res = await fetch(`${API_URL}/villages/${id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Erreur suppression village");
+  },
 
   // Producteurs
   getProducteurs: async (): Promise<Producteur[]> => {
@@ -50,6 +89,19 @@ export const api = {
     if (!res.ok) throw new Error("Erreur chargement producteur");
     return res.json();
   },
+  updateProducteur: async (id: string, data: any): Promise<Producteur> => {
+    const res = await fetch(`${API_URL}/producteurs/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error("Erreur mise à jour producteur");
+    return res.json();
+  },
+  deleteProducteur: async (id: string): Promise<void> => {
+    const res = await fetch(`${API_URL}/producteurs/${id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Erreur suppression producteur");
+  },
 
   // Parcelles
   getParcelles: async (): Promise<Parcelle[]> => {
@@ -61,6 +113,19 @@ export const api = {
     const res = await fetch(`${API_URL}/parcelles/${id}`);
     if (!res.ok) throw new Error("Erreur chargement parcelle");
     return res.json();
+  },
+  updateParcelle: async (id: string, data: any): Promise<Parcelle> => {
+    const res = await fetch(`${API_URL}/parcelles/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error("Erreur mise à jour parcelle");
+    return res.json();
+  },
+  deleteParcelle: async (id: string): Promise<void> => {
+    const res = await fetch(`${API_URL}/parcelles/${id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Erreur suppression parcelle");
   },
 
   // Operations
@@ -75,12 +140,40 @@ export const api = {
     return res.json();
   },
   createOperation: async (data: any): Promise<Operation> => {
-    const res = await fetch(`${API_URL}/operations`, {
+    try {
+      console.log('📤 Envoi des données:', data);
+      const res = await fetch(`${API_URL}/operations`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data)
-    });
-    if (!res.ok) throw new Error("Erreur création operation");
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: "Erreur inconnue" }));
+        console.error('❌ Erreur API:', errorData);
+        throw new Error(errorData.error || errorData.message || "Erreur création operation");
+      }
+
+      const result = await res.json();
+      console.log('✅ Opération créée:', result);
+      return result;
+    } catch (error: any) {
+      console.error('❌ Erreur dans createOperation:', error);
+      throw error;
+    }
+  },
+  deleteOperation: async (id: string): Promise<void> => {
+    const res = await fetch(`${API_URL}/operations/${id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Erreur suppression opération");
+  },
+  // Agents
+  getAgents: async (): Promise<any[]> => {
+    const res = await fetch(`${API_URL}/agents`);
+    if (!res.ok) throw new Error("Erreur chargement agents");
     return res.json();
-  }
+  },
+  deleteAgent: async (id: string): Promise<void> => {
+    const res = await fetch(`${API_URL}/agents/${id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Erreur suppression agent");
+  },
 };

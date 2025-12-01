@@ -296,6 +296,61 @@ model Parcelle {
   updatedAt             DateTime  @updatedAt
 }
 
+model Region {
+  id                    String    @id @default(uuid())
+  code                  String    @unique
+  nom                   String
+  description           String?
+  
+  agents                AgentRegion[]
+  
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model Agent {
+  id                    String    @id @default(uuid())
+  code                  String    @unique
+  nom                   String
+  prenom                String
+  email                 String?   @unique
+  telephone             String
+  statut                String    @default("actif") // actif, inactif, suspendu
+  
+  // Identité
+  date_naissance        DateTime?
+  lieu_naissance        String?
+  nationalite           String?   @default("Ivoirienne")
+  type_piece            String?   // CNI, Passeport
+  numero_piece          String?
+  photo                 String?   // URL ou Base64
+  
+  // Affectation
+  regions               AgentRegion[]
+  operations            Operation[]
+  
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model AgentRegion {
+  id                    String    @id @default(uuid())
+  id_agent              String
+  agent                 Agent     @relation(fields: [id_agent], references: [id], onDelete: Cascade)
+  
+  id_region             String
+  region                Region    @relation(fields: [id_region], references: [id], onDelete: Cascade)
+  
+  date_affectation      DateTime  @default(now())
+  date_fin              DateTime?
+  statut                String    @default("actif") // actif, inactif
+  
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  
+  @@unique([id_agent, id_region])
+}
+
 model Operation {
   id                    String    @id @default(uuid())
   id_village            String
@@ -306,6 +361,9 @@ model Operation {
   
   id_parcelle           String
   parcelle              Parcelle  @relation(fields: [id_parcelle], references: [id])
+  
+  id_agent              String?
+  agent                 Agent?    @relation(fields: [id_agent], references: [id])
   
   statut                String    // Brouillon, Validé, Payé, Annulé
   campagne              String    // 2023-2024, 2024-2025

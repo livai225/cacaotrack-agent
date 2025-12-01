@@ -1,7 +1,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,10 +12,11 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import PhotoCapture from "@/components/forms/PhotoCapture";
 import MultiPhone from "@/components/forms/MultiPhone";
-import { ArrowLeft, Save, Info } from "lucide-react";
+import { ArrowLeft, Save, Info, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { generateProducteurCode, calculateAge } from "@/utils/codification";
 import { useState, useEffect } from "react";
+import { api } from "@/services/api";
 
 const producteurSchema = z.object({
   // Rattachement
@@ -30,14 +31,14 @@ const producteurSchema = z.object({
   telephones: z.array(z.string()).optional(),
   photo_cni: z.string().optional(),
   photo_planteur: z.string().optional(),
-  
+
   nb_femmes: z.number().min(0),
   nb_enfants: z.number().min(0),
   nb_filles: z.number().min(0),
   nb_garcons: z.number().min(0),
   nb_moins_5_ans: z.number().min(0),
   nb_enfants_scolarises: z.number().min(0),
-  
+
   // Scolarisation
   scolarises_primaire_filles: z.number().min(0),
   scolarises_primaire_garcons: z.number().min(0),
@@ -107,10 +108,13 @@ type ProducteurFormData = z.infer<typeof producteurSchema>;
 
 export default function ProducteurForm() {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const isEdit = !!id;
+  const [isLoading, setIsLoading] = useState(false);
   const [age, setAge] = useState<number | null>(null);
   const [generatedCode, setGeneratedCode] = useState<string>("---");
-  
-  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<ProducteurFormData>({
+
+  const { register, handleSubmit, formState: { errors }, setValue, watch, reset } = useForm<ProducteurFormData>({
     resolver: zodResolver(producteurSchema),
     defaultValues: {
       nb_femmes: 0,
@@ -158,6 +162,27 @@ export default function ProducteurForm() {
     }
   });
 
+  // Load existing data when editing
+  useEffect(() => {
+    if (isEdit && id) {
+      setIsLoading(true);
+      api.getProducteur(id)
+        .then((producteur: any) => {
+          reset(producteur);
+          if (producteur.date_naissance) {
+            const calculatedAge = calculateAge(new Date(producteur.date_naissance));
+            setAge(calculatedAge);
+          }
+        })
+        .catch((error) => {
+          console.error("Error loading producteur:", error);
+          toast.error("Erreur lors du chargement du producteur");
+          navigate("/producteurs");
+        })
+        .finally(() => setIsLoading(false));
+    }
+  }, [id, isEdit, reset, navigate]);
+
   // Mise à jour du code généré en temps réel
   const watchedOrg = watch("organisationId");
   const watchedSec = watch("sectionId");
@@ -185,13 +210,23 @@ export default function ProducteurForm() {
     }
   };
 
-  const onSubmit = (data: ProducteurFormData) => {
+  const onSubmit = async (data: ProducteurFormData) => {
+    setIsLoading(true);
     try {
-      console.log("Producteur créé:", { code: generatedCode, age, ...data });
-      toast.success(`Producteur ${generatedCode} enregistré avec succès`);
-      navigate("/producteurs");
+      if (isEdit && id) {
+        await api.updateProducteur(id, data);
+        toast.success("Producteur mis à jour avec succès");
+        navigate(`/producteurs/${id}`);
+      } else {
+        console.log("Producteur créé:", { code: generatedCode, age, ...data });
+        toast.success(`Producteur ${generatedCode} enregistré avec succès`);
+        navigate("/producteurs");
+      }
     } catch (error) {
-      toast.error("Erreur lors de l'enregistrement");
+      console.error("Error saving producteur:", error);
+      toast.error(isEdit ? "Erreur lors de la mise à jour" : "Erreur lors de l'enregistrement");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -218,10 +253,10 @@ export default function ProducteurForm() {
       {watch(name as any) && (
         <div className="flex items-center gap-2 flex-1 animate-in fade-in slide-in-from-left-5">
           <Label>Montant souhaité:</Label>
-          <Input 
-            type="number" 
-            className="w-40" 
-            {...register(montantName as any, { valueAsNumber: true })} 
+          <Input
+            type="number"
+            className="w-40"
+            {...register(montantName as any, { valueAsNumber: true })}
             placeholder="FCFA"
           />
         </div>
@@ -231,26 +266,26 @@ export default function ProducteurForm() {
 
   const renderCultureField = (name: string, label: string) => (
     <div className="border p-4 rounded-lg space-y-4">
-       <div className="flex items-center gap-2">
-         <Checkbox checked={watch(name as any)} onCheckedChange={(chk) => setValue(name as any, !!chk)} />
-         <Label className="font-bold text-lg">{label}</Label>
-       </div>
-       {watch(name as any) && (
-         <div className="grid grid-cols-3 gap-4 pl-6 border-l-2 border-primary/20">
-           <div>
-             <Label>Nb Plantations</Label>
-             <Input type="number" {...register(`${name}_nb_plantations` as any, { valueAsNumber: true })} />
-           </div>
-           <div>
-             <Label>Superficie (Ha)</Label>
-             <Input type="number" step="0.01" {...register(`${name}_superficie` as any, { valueAsNumber: true })} />
-           </div>
-           <div>
-             <Label>Production (T)</Label>
-             <Input type="number" step="0.01" {...register(`${name}_production` as any, { valueAsNumber: true })} />
-           </div>
-         </div>
-       )}
+      <div className="flex items-center gap-2">
+        <Checkbox checked={watch(name as any)} onCheckedChange={(chk) => setValue(name as any, !!chk)} />
+        <Label className="font-bold text-lg">{label}</Label>
+      </div>
+      {watch(name as any) && (
+        <div className="grid grid-cols-3 gap-4 pl-6 border-l-2 border-primary/20">
+          <div>
+            <Label>Nb Plantations</Label>
+            <Input type="number" {...register(`${name}_nb_plantations` as any, { valueAsNumber: true })} />
+          </div>
+          <div>
+            <Label>Superficie (Ha)</Label>
+            <Input type="number" step="0.01" {...register(`${name}_superficie` as any, { valueAsNumber: true })} />
+          </div>
+          <div>
+            <Label>Production (T)</Label>
+            <Input type="number" step="0.01" {...register(`${name}_production` as any, { valueAsNumber: true })} />
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -261,7 +296,7 @@ export default function ProducteurForm() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Nouveau Producteur</h1>
+          <h1 className="text-3xl font-bold text-foreground">{isEdit ? "Modifier Producteur" : "Nouveau Producteur"}</h1>
           <p className="text-muted-foreground">Saisie détaillée du profil producteur</p>
         </div>
       </div>
@@ -271,15 +306,15 @@ export default function ProducteurForm() {
         <Info className="h-4 w-4" />
         <AlertTitle>Instructions aux Enquêteurs</AlertTitle>
         <AlertDescription>
-          1. Vérifiez que vous êtes dans le bon village avant de commencer.<br/>
-          2. Demandez la pièce d'identité du producteur pour saisir le nom exact.<br/>
-          3. Prenez des photos claires et bien cadrées.<br/>
+          1. Vérifiez que vous êtes dans le bon village avant de commencer.<br />
+          2. Demandez la pièce d'identité du producteur pour saisir le nom exact.<br />
+          3. Prenez des photos claires et bien cadrées.<br />
           4. Tous les champs marqués d'un astérisque (*) sont obligatoires.
         </AlertDescription>
       </Alert>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-        
+
         {/* 1. Rattachement & Infos Générales */}
         <Card>
           <CardHeader>
@@ -287,38 +322,38 @@ export default function ProducteurForm() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-               <div>
-                 <Label>Organisation *</Label>
-                 <Select onValueChange={(v) => setValue("organisationId", v)}>
-                   <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
-                   <SelectContent>
-                     <SelectItem value="ORG-001">SCOOP-CA Divo</SelectItem>
-                     <SelectItem value="ORG-002">CAVALLY COOP</SelectItem>
-                   </SelectContent>
-                 </Select>
-               </div>
-               <div>
-                 <Label>Section *</Label>
-                 <Select onValueChange={(v) => setValue("sectionId", v)}>
-                   <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
-                   <SelectContent>
-                     <SelectItem value="SEC-001">Section Nord</SelectItem>
-                     <SelectItem value="SEC-002">Section Sud</SelectItem>
-                   </SelectContent>
-                 </Select>
-               </div>
-               <div>
-                 <Label>Village *</Label>
-                 <Select onValueChange={(v) => setValue("villageId", v)}>
-                   <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
-                   <SelectContent>
-                     <SelectItem value="VIL-001">Village Centre</SelectItem>
-                     <SelectItem value="VIL-002">Campement A</SelectItem>
-                   </SelectContent>
-                 </Select>
-               </div>
+              <div>
+                <Label>Organisation *</Label>
+                <Select onValueChange={(v) => setValue("organisationId", v)}>
+                  <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ORG-001">SCOOP-CA Divo</SelectItem>
+                    <SelectItem value="ORG-002">CAVALLY COOP</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Section *</Label>
+                <Select onValueChange={(v) => setValue("sectionId", v)}>
+                  <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="SEC-001">Section Nord</SelectItem>
+                    <SelectItem value="SEC-002">Section Sud</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Village *</Label>
+                <Select onValueChange={(v) => setValue("villageId", v)}>
+                  <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="VIL-001">Village Centre</SelectItem>
+                    <SelectItem value="VIL-002">Campement A</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            
+
             {/* Code Généré (#10) */}
             {watchedOrg && watchedSec && watchedVil && (
               <div className="p-3 bg-muted/50 rounded-md border border-dashed border-primary">
@@ -349,10 +384,10 @@ export default function ProducteurForm() {
                 </div>
               </div>
               <div>
-                <MultiPhone 
-                  label="Numéros de téléphone" 
-                  values={watch("telephones") || []} 
-                  onChange={(vals) => setValue("telephones", vals)} 
+                <MultiPhone
+                  label="Numéros de téléphone"
+                  values={watch("telephones") || []}
+                  onChange={(vals) => setValue("telephones", vals)}
                 />
               </div>
             </div>
@@ -365,14 +400,14 @@ export default function ProducteurForm() {
             <div className="border-t pt-4">
               <h3 className="font-semibold mb-2">Composition Familiale</h3>
               <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                 <div><Label>Femmes</Label><Input type="number" {...register("nb_femmes", { valueAsNumber: true })} /></div>
-                 <div><Label>Enfants Total</Label><Input type="number" {...register("nb_enfants", { valueAsNumber: true })} /></div>
-                 <div><Label>Filles</Label><Input type="number" {...register("nb_filles", { valueAsNumber: true })} /></div>
-                 <div><Label>Garçons</Label><Input type="number" {...register("nb_garcons", { valueAsNumber: true })} /></div>
-                 <div><Label>Moins de 5 ans</Label><Input type="number" {...register("nb_moins_5_ans", { valueAsNumber: true })} /></div>
-                 <div><Label>Scolarisés Total</Label><Input type="number" {...register("nb_enfants_scolarises", { valueAsNumber: true })} /></div>
+                <div><Label>Femmes</Label><Input type="number" {...register("nb_femmes", { valueAsNumber: true })} /></div>
+                <div><Label>Enfants Total</Label><Input type="number" {...register("nb_enfants", { valueAsNumber: true })} /></div>
+                <div><Label>Filles</Label><Input type="number" {...register("nb_filles", { valueAsNumber: true })} /></div>
+                <div><Label>Garçons</Label><Input type="number" {...register("nb_garcons", { valueAsNumber: true })} /></div>
+                <div><Label>Moins de 5 ans</Label><Input type="number" {...register("nb_moins_5_ans", { valueAsNumber: true })} /></div>
+                <div><Label>Scolarisés Total</Label><Input type="number" {...register("nb_enfants_scolarises", { valueAsNumber: true })} /></div>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 bg-muted/20 p-3 rounded">
                 <div>
                   <Label className="font-semibold block mb-2">Primaire</Label>
@@ -406,54 +441,54 @@ export default function ProducteurForm() {
             <CardTitle className="bg-primary/10 p-2 rounded text-primary">Conditions de Vie</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-               <div>
-                 <h3 className="font-semibold mb-2">Eau</h3>
-                 <div className="space-y-2">
-                   <div className="flex items-center gap-2"><Checkbox checked={watch("eau_courante")} onCheckedChange={(c) => setValue("eau_courante", !!c)} /><Label>Eau courante</Label></div>
-                   <div className="flex items-center gap-2"><Checkbox checked={watch("pompe_hydraulique")} onCheckedChange={(c) => setValue("pompe_hydraulique", !!c)} /><Label>Pompe hydraulique</Label></div>
-                   <div className="flex items-center gap-2"><Checkbox checked={watch("puits")} onCheckedChange={(c) => setValue("puits", !!c)} /><Label>Puits</Label></div>
-                   <div className="flex items-center gap-2"><Checkbox checked={watch("riviere_marigot")} onCheckedChange={(c) => setValue("riviere_marigot", !!c)} /><Label>Rivière / Marigot</Label></div>
-                 </div>
-               </div>
-               <div>
-                 <h3 className="font-semibold mb-2">Electricité</h3>
-                 <div className="space-y-2">
-                   <div className="flex items-center gap-2"><Checkbox checked={watch("electricite_reseau")} onCheckedChange={(c) => setValue("electricite_reseau", !!c)} /><Label>Réseau national</Label></div>
-                   <div className="flex items-center gap-2"><Checkbox checked={watch("electricite_solaire")} onCheckedChange={(c) => setValue("electricite_solaire", !!c)} /><Label>Solaire</Label></div>
-                   <div className="flex items-center gap-2"><Checkbox checked={watch("electricite_lampe")} onCheckedChange={(c) => setValue("electricite_lampe", !!c)} /><Label>Lampe</Label></div>
-                   <div className="flex items-center gap-2"><Checkbox checked={watch("electricite_aucun")} onCheckedChange={(c) => setValue("electricite_aucun", !!c)} /><Label>Pas du tout</Label></div>
-                 </div>
-               </div>
-             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="font-semibold mb-2">Eau</h3>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2"><Checkbox checked={watch("eau_courante")} onCheckedChange={(c) => setValue("eau_courante", !!c)} /><Label>Eau courante</Label></div>
+                  <div className="flex items-center gap-2"><Checkbox checked={watch("pompe_hydraulique")} onCheckedChange={(c) => setValue("pompe_hydraulique", !!c)} /><Label>Pompe hydraulique</Label></div>
+                  <div className="flex items-center gap-2"><Checkbox checked={watch("puits")} onCheckedChange={(c) => setValue("puits", !!c)} /><Label>Puits</Label></div>
+                  <div className="flex items-center gap-2"><Checkbox checked={watch("riviere_marigot")} onCheckedChange={(c) => setValue("riviere_marigot", !!c)} /><Label>Rivière / Marigot</Label></div>
+                </div>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2">Electricité</h3>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2"><Checkbox checked={watch("electricite_reseau")} onCheckedChange={(c) => setValue("electricite_reseau", !!c)} /><Label>Réseau national</Label></div>
+                  <div className="flex items-center gap-2"><Checkbox checked={watch("electricite_solaire")} onCheckedChange={(c) => setValue("electricite_solaire", !!c)} /><Label>Solaire</Label></div>
+                  <div className="flex items-center gap-2"><Checkbox checked={watch("electricite_lampe")} onCheckedChange={(c) => setValue("electricite_lampe", !!c)} /><Label>Lampe</Label></div>
+                  <div className="flex items-center gap-2"><Checkbox checked={watch("electricite_aucun")} onCheckedChange={(c) => setValue("electricite_aucun", !!c)} /><Label>Pas du tout</Label></div>
+                </div>
+              </div>
+            </div>
 
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t pt-4">
-               <div>
-                 <Label>Matériaux de construction</Label>
-                 <Select onValueChange={(v) => setValue("materiaux_mur", v as any)}>
-                   <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
-                   <SelectContent>
-                     <SelectItem value="Terre battue séchée">Terre battue séchée</SelectItem>
-                     <SelectItem value="Briques/Ciment">Briques/Ciment</SelectItem>
-                     <SelectItem value="Bois">Bois</SelectItem>
-                     <SelectItem value="Paille/pisé">Paille/pisé</SelectItem>
-                     <SelectItem value="Matériaux modernes">Matériaux modernes</SelectItem>
-                   </SelectContent>
-                 </Select>
-               </div>
-               <div>
-                 <Label>Toiture</Label>
-                 <Select onValueChange={(v) => setValue("toiture", v as any)}>
-                   <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
-                   <SelectContent>
-                     <SelectItem value="Tôle">Tôle</SelectItem>
-                     <SelectItem value="Bambou-Plastique">Bambou-Plastique</SelectItem>
-                     <SelectItem value="Paille-Plastique">Paille-Plastique</SelectItem>
-                     <SelectItem value="Bambou-Paille">Bambou-Paille</SelectItem>
-                   </SelectContent>
-                 </Select>
-               </div>
-             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t pt-4">
+              <div>
+                <Label>Matériaux de construction</Label>
+                <Select onValueChange={(v) => setValue("materiaux_mur", v as any)}>
+                  <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Terre battue séchée">Terre battue séchée</SelectItem>
+                    <SelectItem value="Briques/Ciment">Briques/Ciment</SelectItem>
+                    <SelectItem value="Bois">Bois</SelectItem>
+                    <SelectItem value="Paille/pisé">Paille/pisé</SelectItem>
+                    <SelectItem value="Matériaux modernes">Matériaux modernes</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Toiture</Label>
+                <Select onValueChange={(v) => setValue("toiture", v as any)}>
+                  <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Tôle">Tôle</SelectItem>
+                    <SelectItem value="Bambou-Plastique">Bambou-Plastique</SelectItem>
+                    <SelectItem value="Paille-Plastique">Paille-Plastique</SelectItem>
+                    <SelectItem value="Bambou-Paille">Bambou-Paille</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -469,36 +504,36 @@ export default function ProducteurForm() {
             </div>
 
             <div className="border-t pt-4">
-               <h3 className="font-semibold mb-3">Moyens utilisés</h3>
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 {renderRadioGroup("usage_mobile_money", "Mobile Money", ["Peu", "Souvent", "Toujours", "Jamais"])}
-                 {renderRadioGroup("usage_virement", "Virement Bancaire", ["Peu", "Souvent", "Toujours", "Jamais"])}
-                 {renderRadioGroup("usage_especes", "Espèces", ["Peu", "Souvent", "Toujours", "Jamais"])}
-                 {renderRadioGroup("usage_tontine", "Tontine commune", ["Peu", "Souvent", "Toujours", "Jamais"])}
-               </div>
+              <h3 className="font-semibold mb-3">Moyens utilisés</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {renderRadioGroup("usage_mobile_money", "Mobile Money", ["Peu", "Souvent", "Toujours", "Jamais"])}
+                {renderRadioGroup("usage_virement", "Virement Bancaire", ["Peu", "Souvent", "Toujours", "Jamais"])}
+                {renderRadioGroup("usage_especes", "Espèces", ["Peu", "Souvent", "Toujours", "Jamais"])}
+                {renderRadioGroup("usage_tontine", "Tontine commune", ["Peu", "Souvent", "Toujours", "Jamais"])}
+              </div>
             </div>
 
             <div className="border-t pt-4">
               <h3 className="font-semibold mb-3">Crédit & Epargne</h3>
               <div className="space-y-2">
-                 {renderCreditField("interet_compte_bancaire", "Intéressé par un compte bancaire", "montant_compte_bancaire")}
-                 {renderCreditField("interet_epargne", "Intéressé par une épargne", "montant_epargne")}
+                {renderCreditField("interet_compte_bancaire", "Intéressé par un compte bancaire", "montant_compte_bancaire")}
+                {renderCreditField("interet_epargne", "Intéressé par une épargne", "montant_epargne")}
               </div>
             </div>
 
             <div className="border-t pt-4">
               <h3 className="font-semibold mb-3">Crédit Agricole (Intérêt)</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 {renderCreditField("credit_intrants", "Crédit intrants agricoles", "montant_credit_intrants")}
-                 {renderCreditField("credit_soudure", "Crédit de soudure", "montant_credit_soudure")}
-                 {renderCreditField("pret_scolaire", "Prêt scolaire", "montant_pret_scolaire")}
-                 {renderCreditField("credit_acces_intrants", "Crédit accès aux intrants", "montant_credit_acces_intrants")}
-                 {renderCreditField("credit_biens_conso", "Crédit biens consommation", "montant_credit_biens_conso")}
-                 {renderCreditField("credit_assurance_maladie", "Assurance maladie", "montant_credit_assurance_maladie")}
-                 {renderCreditField("credit_assurance_agricole", "Assurance agricole", "montant_credit_assurance_agricole")}
-                 {renderCreditField("credit_assurance_retraite", "Assurance retraite", "montant_credit_assurance_retraite")}
-                 {renderCreditField("credit_conseil_agricole", "Conseil agricole", "montant_credit_conseil_agricole")}
-                 {renderCreditField("credit_rehabilitation", "Crédit réhabilitation", "montant_credit_rehabilitation")}
+                {renderCreditField("credit_intrants", "Crédit intrants agricoles", "montant_credit_intrants")}
+                {renderCreditField("credit_soudure", "Crédit de soudure", "montant_credit_soudure")}
+                {renderCreditField("pret_scolaire", "Prêt scolaire", "montant_pret_scolaire")}
+                {renderCreditField("credit_acces_intrants", "Crédit accès aux intrants", "montant_credit_acces_intrants")}
+                {renderCreditField("credit_biens_conso", "Crédit biens consommation", "montant_credit_biens_conso")}
+                {renderCreditField("credit_assurance_maladie", "Assurance maladie", "montant_credit_assurance_maladie")}
+                {renderCreditField("credit_assurance_agricole", "Assurance agricole", "montant_credit_assurance_agricole")}
+                {renderCreditField("credit_assurance_retraite", "Assurance retraite", "montant_credit_assurance_retraite")}
+                {renderCreditField("credit_conseil_agricole", "Conseil agricole", "montant_credit_conseil_agricole")}
+                {renderCreditField("credit_rehabilitation", "Crédit réhabilitation", "montant_credit_rehabilitation")}
               </div>
             </div>
           </CardContent>
@@ -510,23 +545,23 @@ export default function ProducteurForm() {
             <CardTitle className="bg-primary/10 p-2 rounded text-primary">Production Agricole</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            
+
             {/* Cacao (Toujours présent) */}
             <div className="border p-4 rounded-lg space-y-4 bg-muted/10">
               <h3 className="font-bold text-lg">Cacao</h3>
               <div className="grid grid-cols-3 gap-4">
-                 <div>
-                   <Label>Nb Plantations</Label>
-                   <Input type="number" {...register("cacao_nb_plantations", { valueAsNumber: true })} />
-                 </div>
-                 <div>
-                   <Label>Superficie Totale (Ha)</Label>
-                   <Input type="number" step="0.01" {...register("cacao_superficie", { valueAsNumber: true })} />
-                 </div>
-                 <div>
-                   <Label>Production Totale (T)</Label>
-                   <Input type="number" step="0.01" {...register("cacao_production", { valueAsNumber: true })} />
-                 </div>
+                <div>
+                  <Label>Nb Plantations</Label>
+                  <Input type="number" {...register("cacao_nb_plantations", { valueAsNumber: true })} />
+                </div>
+                <div>
+                  <Label>Superficie Totale (Ha)</Label>
+                  <Input type="number" step="0.01" {...register("cacao_superficie", { valueAsNumber: true })} />
+                </div>
+                <div>
+                  <Label>Production Totale (T)</Label>
+                  <Input type="number" step="0.01" {...register("cacao_production", { valueAsNumber: true })} />
+                </div>
               </div>
             </div>
 
@@ -544,9 +579,9 @@ export default function ProducteurForm() {
           <Button type="button" variant="outline" size="lg" onClick={() => navigate("/producteurs")}>
             Annuler
           </Button>
-          <Button type="submit" size="lg" className="gap-2 bg-primary hover:bg-primary/90">
-            <Save className="h-5 w-5" />
-            Enregistrer le Producteur
+          <Button type="submit" size="lg" className="gap-2 bg-primary hover:bg-primary/90" disabled={isLoading}>
+            {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+            {isEdit ? "Mettre à jour" : "Enregistrer le Producteur"}
           </Button>
         </div>
       </form>

@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Filter, Layers, Loader2 } from "lucide-react";
+import { Search, Plus, Filter, Layers, Loader2, Trash2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "@/services/api";
 import { Section } from "@/types/organisation";
@@ -39,7 +39,19 @@ export default function Sections() {
     }
   };
 
-  const filteredSections = sections.filter(s => 
+  const handleDelete = async (id: string) => {
+    if (confirm("Êtes-vous sûr de vouloir supprimer cette section ?")) {
+      try {
+        await api.deleteSection(id);
+        setSections(sections.filter(s => s.id !== id));
+      } catch (error) {
+        console.error("Erreur suppression:", error);
+        alert("Erreur lors de la suppression");
+      }
+    }
+  };
+
+  const filteredSections = sections.filter(s =>
     s.nom.toLowerCase().includes(searchQuery.toLowerCase()) ||
     s.localite.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -77,12 +89,12 @@ export default function Sections() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {isLoading ? (
-            <div className="col-span-full flex justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
+          <div className="col-span-full flex justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
         ) : filteredSections.map((section) => (
-          <Card 
-            key={section.id} 
+          <Card
+            key={section.id}
             className="shadow-card hover:shadow-elevated transition-all cursor-pointer group"
             onClick={() => navigate(`/sections/${section.id}`)}
           >
@@ -101,7 +113,7 @@ export default function Sections() {
                       {section.statut}
                     </Badge>
                   </div>
-                  
+
                   <div className="space-y-1 text-xs mb-3">
                     <p className="text-muted-foreground">Président: {section.president_nom}</p>
                     <p className="text-muted-foreground">{section.localite}</p>
@@ -121,6 +133,21 @@ export default function Sections() {
                       <p className="text-xs text-muted-foreground">En cours</p>
                       <p className="text-sm font-semibold text-foreground">{section.tonnage_c_cours}T</p>
                     </div>
+                  </div>
+
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="w-full gap-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(section.id);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Supprimer
+                    </Button>
                   </div>
                 </div>
               </div>

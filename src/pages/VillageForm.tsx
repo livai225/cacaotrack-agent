@@ -1,7 +1,8 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,9 +13,10 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import PhotoCapture from "@/components/forms/PhotoCapture";
 import GPSCapture from "@/components/forms/GPSCapture";
 import MultiPhone from "@/components/forms/MultiPhone";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { generateVillageCode } from "@/utils/codeGenerators";
+import { api } from "@/services/api";
 
 // Schéma de validation complet basé sur l'image fournie
 const villageSchema = z.object({
@@ -103,7 +105,7 @@ const villageSchema = z.object({
   commerces: z.boolean(),
   // commerces_produits géré comme string[] via UI spécifique ou champs multiples
   artisanat: z.boolean(),
-  
+
   // Couverture GSM
   reseau_orange: z.enum(["Très bon", "Bon", "Moyen", "Pas du tout"]).optional(),
   reseau_mtn: z.enum(["Très bon", "Bon", "Moyen", "Pas du tout"]).optional(),
@@ -120,8 +122,11 @@ type VillageFormData = z.infer<typeof villageSchema>;
 
 export default function VillageForm() {
   const navigate = useNavigate();
-  
-  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<VillageFormData>({
+  const { id } = useParams();
+  const isEdit = !!id;
+  const [isLoading, setIsLoading] = useState(false);
+
+  const { register, handleSubmit, formState: { errors }, setValue, watch, reset } = useForm<VillageFormData>({
     resolver: zodResolver(villageSchema),
     defaultValues: {
       type: "Village",
@@ -162,15 +167,41 @@ export default function VillageForm() {
     }
   });
 
-  const onSubmit = (data: VillageFormData) => {
+  // Load existing data when editing
+  useEffect(() => {
+    if (isEdit && id) {
+      setIsLoading(true);
+      api.getVillage(id)
+        .then((village: any) => {
+          reset(village);
+        })
+        .catch((error) => {
+          console.error("Error loading village:", error);
+          toast.error("Erreur lors du chargement du village");
+          navigate("/villages");
+        })
+        .finally(() => setIsLoading(false));
+    }
+  }, [id, isEdit, reset, navigate]);
+
+  const onSubmit = async (data: VillageFormData) => {
+    setIsLoading(true);
     try {
-      const code = generateVillageCode(Math.floor(Math.random() * 1000)); // Simulé
-      console.log("Village créé:", { code, ...data });
-      // Ici appel au service de création
-      toast.success(`Village ${code} créé avec succès`);
-      navigate("/villages");
+      if (isEdit && id) {
+        await api.updateVillage(id, data);
+        toast.success("Village mis à jour avec succès");
+        navigate(`/villages/${id}`);
+      } else {
+        const code = generateVillageCode(Math.floor(Math.random() * 1000));
+        console.log("Village créé:", { code, ...data });
+        toast.success(`Village ${code} créé avec succès`);
+        navigate("/villages");
+      }
     } catch (error) {
-      toast.error("Erreur lors de la création du village");
+      console.error("Error saving village:", error);
+      toast.error(isEdit ? "Erreur lors de la mise à jour" : "Erreur lors de la création du village");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -181,13 +212,13 @@ export default function VillageForm() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Nouveau Village / Campement</h1>
+          <h1 className="text-3xl font-bold text-foreground">{isEdit ? "Modifier Village / Campement" : "Nouveau Village / Campement"}</h1>
           <p className="text-muted-foreground">Formulaire détaillé de collecte de données</p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-        
+
         {/* 1. Informations Générales */}
         <Card>
           <CardHeader>
@@ -219,7 +250,7 @@ export default function VillageForm() {
 
             <div className="border-t pt-4 mt-4">
               <Label className="mb-2 block font-semibold">Coordonnées GPS</Label>
-              <GPSCapture 
+              <GPSCapture
                 onChange={(coords) => {
                   setValue("latitude", coords.latitude);
                   setValue("longitude", coords.longitude);
@@ -247,7 +278,7 @@ export default function VillageForm() {
               <Input {...register("chef_nom")} />
               {errors.chef_nom && <p className="text-destructive text-sm">{errors.chef_nom.message}</p>}
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label>CNI (Nom et Prénom ou Numéro)</Label>
@@ -309,19 +340,19 @@ export default function VillageForm() {
             ].map((item: any) => (
               <div key={item.id} className="flex items-center gap-4 p-2 border rounded">
                 <div className="flex items-center gap-2 w-1/3">
-                  <Checkbox 
-                    checked={watch(item.id)} 
-                    onCheckedChange={(chk) => setValue(item.id, !!chk)} 
+                  <Checkbox
+                    checked={watch(item.id)}
+                    onCheckedChange={(chk) => setValue(item.id, !!chk)}
                   />
                   <Label>{item.label}</Label>
                 </div>
                 {watch(item.id) && (
                   <div className="flex items-center gap-2 flex-1">
                     <Label>% Utilisation</Label>
-                    <Input 
-                      type="number" 
-                      className="w-24" 
-                      {...register(item.pct, { valueAsNumber: true })} 
+                    <Input
+                      type="number"
+                      className="w-24"
+                      {...register(item.pct, { valueAsNumber: true })}
                       placeholder="%"
                     />
                   </div>
@@ -344,17 +375,17 @@ export default function VillageForm() {
             ].map((item: any) => (
               <div key={item.id} className="flex flex-col md:flex-row md:items-center gap-4 p-2 border rounded">
                 <div className="flex items-center gap-2 w-1/3">
-                  <Checkbox 
-                    checked={watch(item.id)} 
-                    onCheckedChange={(chk) => setValue(item.id, !!chk)} 
+                  <Checkbox
+                    checked={watch(item.id)}
+                    onCheckedChange={(chk) => setValue(item.id, !!chk)}
                   />
                   <Label>{item.label}</Label>
                 </div>
                 {watch(item.id) && (
                   <div className="flex items-center gap-4 flex-1">
                     <Label>Niveau:</Label>
-                    <RadioGroup 
-                      onValueChange={(val) => setValue(item.level, val)} 
+                    <RadioGroup
+                      onValueChange={(val) => setValue(item.level, val)}
                       defaultValue={watch(item.level)}
                       className="flex gap-4"
                     >
@@ -390,9 +421,9 @@ export default function VillageForm() {
             ].map((item: any) => (
               <div key={item.prefix} className="border p-4 rounded-lg space-y-4">
                 <div className="flex items-center gap-2 mb-4">
-                  <Checkbox 
-                    checked={watch(item.prefix)} 
-                    onCheckedChange={(chk) => setValue(item.prefix, !!chk)} 
+                  <Checkbox
+                    checked={watch(item.prefix)}
+                    onCheckedChange={(chk) => setValue(item.prefix, !!chk)}
                   />
                   <Label className="text-lg font-semibold">{item.label}</Label>
                 </div>
@@ -420,10 +451,10 @@ export default function VillageForm() {
                       <Input type="number" step="0.1" {...register(`${item.prefix}_distance`, { valueAsNumber: true })} />
                     </div>
                     <div>
-                      <PhotoCapture 
-                        label={`Photo ${item.label}`} 
-                        onChange={(val) => setValue(`${item.prefix}_photo`, val)} 
-                        value={watch(`${item.prefix}_photo`)} 
+                      <PhotoCapture
+                        label={`Photo ${item.label}`}
+                        onChange={(val) => setValue(`${item.prefix}_photo`, val)}
+                        value={watch(`${item.prefix}_photo`)}
                       />
                     </div>
                   </div>
@@ -445,9 +476,9 @@ export default function VillageForm() {
             ].map((item: any) => (
               <div key={item.prefix} className="border p-4 rounded-lg space-y-4">
                 <div className="flex items-center gap-2 mb-4">
-                  <Checkbox 
-                    checked={watch(item.prefix)} 
-                    onCheckedChange={(chk) => setValue(item.prefix, !!chk)} 
+                  <Checkbox
+                    checked={watch(item.prefix)}
+                    onCheckedChange={(chk) => setValue(item.prefix, !!chk)}
                   />
                   <Label className="text-lg font-semibold">{item.label}</Label>
                 </div>
@@ -475,10 +506,10 @@ export default function VillageForm() {
                       <Input type="number" step="0.1" {...register(`${item.prefix}_distance`, { valueAsNumber: true })} />
                     </div>
                     <div>
-                      <PhotoCapture 
-                        label={`Photo ${item.label}`} 
-                        onChange={(val) => setValue(`${item.prefix}_photo`, val)} 
-                        value={watch(`${item.prefix}_photo`)} 
+                      <PhotoCapture
+                        label={`Photo ${item.label}`}
+                        onChange={(val) => setValue(`${item.prefix}_photo`, val)}
+                        value={watch(`${item.prefix}_photo`)}
                       />
                     </div>
                   </div>
@@ -494,12 +525,12 @@ export default function VillageForm() {
             <CardTitle className="bg-primary/10 p-2 rounded text-primary">Activités professionnelles</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            
+
             <div>
               <h3 className="font-semibold mb-3">Activités agricoles</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
-                  "culture_cacao", "culture_cafe", "culture_riz", "culture_mais", 
+                  "culture_cacao", "culture_cafe", "culture_riz", "culture_mais",
                   "culture_hevea", "culture_palmier", "culture_maraicheres"
                 ].map((key: any) => (
                   <div key={key} className="flex items-center gap-2">
@@ -525,30 +556,30 @@ export default function VillageForm() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-               <div className="border p-3 rounded">
-                 <div className="flex items-center gap-2 mb-2">
-                   <Checkbox checked={watch("commerces")} onCheckedChange={(chk) => setValue("commerces", !!chk)} />
-                   <Label className="font-bold">Commerces</Label>
-                 </div>
-                 {watch("commerces") && (
-                   <div className="ml-6 mt-2">
-                     <Label className="text-xs">Produits (séparés par virgule)</Label>
-                     <Input placeholder="Ex: Alimentation, Boutique..." />
-                   </div>
-                 )}
-               </div>
-               <div className="border p-3 rounded">
-                 <div className="flex items-center gap-2 mb-2">
-                   <Checkbox checked={watch("artisanat")} onCheckedChange={(chk) => setValue("artisanat", !!chk)} />
-                   <Label className="font-bold">Artisanat</Label>
-                 </div>
-                 {watch("artisanat") && (
-                   <div className="ml-6 mt-2">
-                     <Label className="text-xs">Produits (séparés par virgule)</Label>
-                     <Input placeholder="Ex: Couture, Coiffure..." />
-                   </div>
-                 )}
-               </div>
+              <div className="border p-3 rounded">
+                <div className="flex items-center gap-2 mb-2">
+                  <Checkbox checked={watch("commerces")} onCheckedChange={(chk) => setValue("commerces", !!chk)} />
+                  <Label className="font-bold">Commerces</Label>
+                </div>
+                {watch("commerces") && (
+                  <div className="ml-6 mt-2">
+                    <Label className="text-xs">Produits (séparés par virgule)</Label>
+                    <Input placeholder="Ex: Alimentation, Boutique..." />
+                  </div>
+                )}
+              </div>
+              <div className="border p-3 rounded">
+                <div className="flex items-center gap-2 mb-2">
+                  <Checkbox checked={watch("artisanat")} onCheckedChange={(chk) => setValue("artisanat", !!chk)} />
+                  <Label className="font-bold">Artisanat</Label>
+                </div>
+                {watch("artisanat") && (
+                  <div className="ml-6 mt-2">
+                    <Label className="text-xs">Produits (séparés par virgule)</Label>
+                    <Input placeholder="Ex: Couture, Coiffure..." />
+                  </div>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -559,7 +590,7 @@ export default function VillageForm() {
             <CardTitle className="bg-primary/10 p-2 rounded text-primary">Couverture GSM & Paiement</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {["Orange", "MTN", "MOOV"].map((operator) => (
                 <div key={operator} className="space-y-2">
@@ -606,9 +637,9 @@ export default function VillageForm() {
           <Button type="button" variant="outline" size="lg" onClick={() => navigate("/villages")}>
             Annuler
           </Button>
-          <Button type="submit" size="lg" className="gap-2 bg-primary hover:bg-primary/90">
-            <Save className="h-5 w-5" />
-            Enregistrer le Village
+          <Button type="submit" size="lg" className="gap-2 bg-primary hover:bg-primary/90" disabled={isLoading}>
+            {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+            {isEdit ? "Mettre à jour" : "Enregistrer le Village"}
           </Button>
         </div>
       </form>

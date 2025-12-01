@@ -1,6 +1,7 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { Home, Building2, MapPin, Layers, Users, Trees, ClipboardList, RefreshCw, User, Map } from "lucide-react";
+import { Home, Building2, MapPin, Layers, Users, Trees, ClipboardList, RefreshCw, User, Map, UserCheck, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import OfflineIndicator from "./OfflineIndicator";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: Home },
@@ -11,6 +12,8 @@ const navigation = [
   { name: "Producteurs", href: "/producteurs", icon: Users },
   { name: "Plantations", href: "/plantations", icon: Trees },
   { name: "Opérations", href: "/operations", icon: ClipboardList },
+  { name: "Agents", href: "/agents", icon: UserCheck },
+  { name: "Suivi Agents", href: "/agents/dashboard", icon: BarChart3 },
   { name: "Synchronisation", href: "/sync", icon: RefreshCw },
 ];
 
@@ -22,7 +25,7 @@ export default function Layout() {
       {/* Sidebar */}
       <aside className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col">
         <div className="p-6 border-b border-sidebar-border">
-          <h1 className="text-xl font-bold text-sidebar-foreground">ASCO CacaoTrack</h1>
+          <h1 className="text-xl font-bold text-sidebar-foreground">ASCO Track</h1>
           <p className="text-xs text-sidebar-foreground/70 mt-1">Collecte Données Terrain</p>
         </div>
 
@@ -62,6 +65,9 @@ export default function Layout() {
       <main className="flex-1 overflow-auto">
         <Outlet />
       </main>
+
+      {/* Indicateur hors ligne */}
+      <OfflineIndicator />
     </div>
   );
 }
