@@ -4,13 +4,43 @@ Application web complète pour la gestion de la filière cacao en Côte d'Ivoire
 
 ## 🚀 Démarrage rapide
 
+### Prérequis
+- Node.js 18+
+- PostgreSQL 14+ avec PostGIS
+- Git
+
+### Configuration de la base de données
+
+Le projet utilise **PostgreSQL + PostGIS**. Consultez [MIGRATION_POSTGRESQL.md](./MIGRATION_POSTGRESQL.md) pour les détails complets.
+
+**Configuration rapide :**
+```bash
+# 1. Créer le fichier .env dans server/
+cd server
+cp .env.example .env
+
+# 2. Éditer .env avec vos paramètres de connexion
+# DATABASE_URL="postgresql://asco_user:AscoSecure2024!@82.208.22.230:5432/asco_db?schema=public"
+
+# 3. Installer les dépendances
+npm install
+
+# 4. Configurer la base de données (Windows)
+.\scripts\setup-db.ps1
+
+# Ou (Linux/Mac)
+chmod +x scripts/setup-db.sh
+./scripts/setup-db.sh
+```
+
 ### Backend
 ```bash
 cd server
 npm install
-npm run db:push
-npm run db:seed
-npm run dev
+npm run db:generate  # Générer le client Prisma
+npm run db:push      # Créer les tables
+npm run db:seed      # (Optionnel) Données de test
+npm run dev          # Lancer le serveur
 ```
 
 ### Frontend
@@ -86,12 +116,13 @@ Toute la documentation est disponible dans le dossier [`docs/`](./docs/) :
 
 ## 🛠️ Technologies
 
-- **Backend:** Express.js + Prisma + MySQL
+- **Backend:** Express.js + Prisma + PostgreSQL + PostGIS
 - **Frontend:** React + TypeScript + Vite
 - **UI:** Tailwind CSS + shadcn/ui
 - **Validation:** Zod + React Hook Form
 - **Charts:** Recharts
 - **Maps:** Mapbox GL
+- **Géospatial:** PostGIS pour les données géographiques
 
 ## 📊 Versions
 

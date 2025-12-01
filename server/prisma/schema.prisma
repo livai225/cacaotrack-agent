@@ -6,8 +6,8 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
-  url      = "mysql://root:@localhost:3306/asco"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Organisation {

@@ -1,0 +1,189 @@
+═══════════════════════════════════════════════════════════════
+  LISTE DES FICHIERS - MIGRATION POSTGRESQL + POSTGIS
+═══════════════════════════════════════════════════════════════
+
+Date: 1er décembre 2025
+Projet: CacaoTrack Agent
+Migration: MySQL → PostgreSQL + PostGIS
+
+───────────────────────────────────────────────────────────────
+📝 FICHIERS MODIFIÉS
+───────────────────────────────────────────────────────────────
+
+1. server/prisma/schema.prisma
+   ✓ Provider: mysql → postgresql
+   ✓ URL: env("DATABASE_URL")
+
+2. server/src/index.ts
+   ✓ Ajout: import 'dotenv/config'
+
+3. README.md
+   ✓ Section démarrage rapide mise à jour
+   ✓ Technologies mises à jour
+   ✓ Prérequis PostgreSQL ajoutés
+
+───────────────────────────────────────────────────────────────
+📄 NOUVEAUX FICHIERS CRÉÉS
+───────────────────────────────────────────────────────────────
+
+DOCUMENTATION
+─────────────
+4. MIGRATION_POSTGRESQL.md
+   → Guide complet de migration (détaillé)
+
+5. QUICKSTART.md
+   → Guide de démarrage rapide
+
+6. CHANGEMENTS_EFFECTUES.md
+   → Résumé de tous les changements
+
+7. FICHIERS_MIGRATION.txt
+   → Ce fichier (liste des fichiers)
+
+CONFIGURATION
+─────────────
+8. server/.env.example
+   → Template de configuration avec DATABASE_URL
+
+9. server/.gitignore
+   → Ignore .env, node_modules, etc.
+
+SCRIPTS D'AUTOMATISATION
+────────────────────────
+10. server/scripts/setup-db.sh
+    → Script Bash (Linux/Mac)
+    → Configuration automatique de la DB
+
+11. server/scripts/setup-db.ps1
+    → Script PowerShell (Windows)
+    → Configuration automatique de la DB
+
+MIGRATION POSTGIS
+─────────────────
+12. server/prisma/migrations/00_init_postgis/migration.sql
+    → Active l'extension PostGIS
+
+───────────────────────────────────────────────────────────────
+📂 STRUCTURE DES DOSSIERS
+───────────────────────────────────────────────────────────────
+
+cacaotrack-agent/
+│
+├── README.md                          [MODIFIÉ]
+├── MIGRATION_POSTGRESQL.md            [NOUVEAU]
+├── QUICKSTART.md                      [NOUVEAU]
+├── CHANGEMENTS_EFFECTUES.md           [NOUVEAU]
+├── FICHIERS_MIGRATION.txt             [NOUVEAU]
+│
+├── server/
+│   ├── .env.example                   [NOUVEAU]
+│   ├── .gitignore                     [NOUVEAU]
+│   │
+│   ├── src/
+│   │   └── index.ts                   [MODIFIÉ]
+│   │
+│   ├── prisma/
+│   │   ├── schema.prisma              [MODIFIÉ]
+│   │   └── migrations/
+│   │       └── 00_init_postgis/
+│   │           └── migration.sql      [NOUVEAU]
+│   │
+│   └── scripts/
+│       ├── setup-db.sh                [NOUVEAU]
+│       └── setup-db.ps1               [NOUVEAU]
+│
+└── [autres fichiers inchangés]
+
+───────────────────────────────────────────────────────────────
+🔧 FICHIERS À CRÉER MANUELLEMENT
+───────────────────────────────────────────────────────────────
+
+Sur la VM ou en local, créer :
+
+1. server/.env
+   Copier depuis server/.env.example
+   Adapter DATABASE_URL si nécessaire
+
+───────────────────────────────────────────────────────────────
+✅ CHECKLIST DE VÉRIFICATION
+───────────────────────────────────────────────────────────────
+
+AVANT DE COMMITER
+──────────────────
+☐ Vérifier que .env n'est PAS commité
+☐ Vérifier que .gitignore est présent
+☐ Vérifier que schema.prisma utilise postgresql
+☐ Vérifier que index.ts importe dotenv
+
+AVANT DE DÉPLOYER
+──────────────────
+☐ PostgreSQL installé sur la VM
+☐ PostGIS installé
+☐ Base de données asco_db créée
+☐ Utilisateur asco_user créé
+☐ Extension PostGIS activée
+☐ Pare-feu configuré (port 5432)
+☐ Fichier .env créé dans server/
+☐ npm install exécuté
+☐ npm run db:generate exécuté
+☐ npm run db:push exécuté
+
+TESTS
+─────
+☐ Connexion à PostgreSQL OK
+☐ Extension PostGIS active
+☐ Client Prisma généré
+☐ Tables créées dans la DB
+☐ Backend démarre sans erreur
+☐ Frontend démarre sans erreur
+☐ API répond correctement
+
+───────────────────────────────────────────────────────────────
+📊 STATISTIQUES
+───────────────────────────────────────────────────────────────
+
+Fichiers modifiés:     3
+Fichiers créés:        9
+Total fichiers:       12
+
+Lignes de doc:      ~800
+Scripts:              2
+Migrations SQL:       1
+
+───────────────────────────────────────────────────────────────
+🚀 COMMANDES RAPIDES
+───────────────────────────────────────────────────────────────
+
+# Configurer la DB (Linux/Mac)
+cd server && chmod +x scripts/setup-db.sh && ./scripts/setup-db.sh
+
+# Configurer la DB (Windows)
+cd server && .\scripts\setup-db.ps1
+
+# Lancer le backend
+cd server && npm run dev
+
+# Lancer le frontend
+npm run dev
+
+# Ouvrir Prisma Studio
+cd server && npx prisma studio
+
+───────────────────────────────────────────────────────────────
+📚 DOCUMENTATION
+───────────────────────────────────────────────────────────────
+
+Guide détaillé:     MIGRATION_POSTGRESQL.md
+Guide rapide:       QUICKSTART.md
+Résumé:             CHANGEMENTS_EFFECTUES.md
+Liste fichiers:     FICHIERS_MIGRATION.txt (ce fichier)
+
+───────────────────────────────────────────────────────────────
+✨ FIN DE LA MIGRATION
+───────────────────────────────────────────────────────────────
+
+Statut: ✅ TERMINÉ
+Date:   1er décembre 2025
+Prêt:   OUI - Prêt pour le déploiement
+
+═══════════════════════════════════════════════════════════════
