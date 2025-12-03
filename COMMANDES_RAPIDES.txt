@@ -1,0 +1,15 @@
+# ========================================
+# COMMANDES RAPIDES - À EXÉCUTER SUR LA VM
+# ========================================
+
+# Résoudre le conflit Git et relancer le script
+cd ~/apps/cacaotrack-agent
+git stash
+git pull origin main
+./FIX_API.sh
+
+# ========================================
+# OU en une seule ligne :
+# ========================================
+
+cd ~/apps/cacaotrack-agent && git stash && git pull origin main && ./FIX_API.sh

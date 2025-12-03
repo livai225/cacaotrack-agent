@@ -34,6 +34,7 @@ import OrganisationDetails from "./pages/OrganisationDetails"; // Import ajouté
 import Agents from "./pages/Agents";
 import AgentForm from "./pages/AgentForm";
 import AgentDashboard from "./pages/AgentDashboard";
+import OperationsDashboard from "./pages/OperationsDashboard";
 import Storage from "./utils/storage";
 
 const queryClient = new QueryClient();
@@ -76,6 +77,7 @@ const App = () => {
               <Route path="/plantations/:id" element={<PlantationDetails />} /> {/* Route Détails */}
               <Route path="/plantations/:id/edit" element={<PlantationForm />} /> {/* Route Edition */}
               <Route path="/operations" element={<Operations />} />
+              <Route path="/operations/dashboard" element={<OperationsDashboard />} />
               <Route path="/operations/nouveau" element={<OperationForm />} />
               <Route path="/operations/:id" element={<OperationDetails />} /> {/* Route Détails */}
               <Route path="/agents" element={<Agents />} />

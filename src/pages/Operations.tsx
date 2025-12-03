@@ -5,7 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Plus, User, MapPin, CheckCircle2, Circle,
-  Loader2, Search, Filter, Trash2, Clock, CheckCheck, List
+  Loader2, Search, Filter, Trash2, Clock, CheckCheck, List, BarChart3
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
@@ -178,6 +178,10 @@ export default function Operations() {
             Gestion et suivi des collectes terrain
           </p>
         </div>
+        <Button variant="outline" className="gap-2" onClick={() => navigate("/operations/dashboard")}>
+          <BarChart3 className="h-4 w-4" />
+          Voir le Dashboard
+        </Button>
       </div>
 
       {/* Onglets */}
