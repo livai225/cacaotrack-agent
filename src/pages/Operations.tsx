@@ -2,9 +2,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Plus, User, MapPin, CheckCircle2, Circle,
-  Loader2, Search, Filter, Trash2
+  Loader2, Search, Filter, Trash2, Clock, CheckCheck, List
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
@@ -65,6 +66,7 @@ export default function Operations() {
   const [operations, setOperations] = useState<OperationWithRelations[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState("toutes");
 
   useEffect(() => {
     const loadData = async () => {
@@ -116,17 +118,43 @@ export default function Operations() {
     }
   };
 
-  // Filtrer les opérations
+  // Filtrer les opérations par onglet et recherche
   const filteredOperations = operations.filter(op => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      op.id.toLowerCase().includes(query) ||
-      op.producteur?.nom_complet?.toLowerCase().includes(query) ||
-      op.agent?.nom?.toLowerCase().includes(query) ||
-      op.agent?.prenom?.toLowerCase().includes(query)
-    );
+    // Filtre par recherche
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const matchSearch = (
+        op.id.toLowerCase().includes(query) ||
+        op.producteur?.nom_complet?.toLowerCase().includes(query) ||
+        op.agent?.nom?.toLowerCase().includes(query) ||
+        op.agent?.prenom?.toLowerCase().includes(query)
+      );
+      if (!matchSearch) return false;
+    }
+
+    // Filtre par onglet
+    const progression = calculerProgression(op);
+    if (activeTab === "en-cours") {
+      return progression.pourcentage < 100 && op.statut !== "Annulé";
+    } else if (activeTab === "terminees") {
+      return progression.pourcentage === 100 || op.statut === "Payé";
+    }
+    // "toutes" affiche tout
+    return true;
   });
+
+  // Statistiques pour les badges
+  const stats = {
+    enCours: operations.filter(op => {
+      const prog = calculerProgression(op);
+      return prog.pourcentage < 100 && op.statut !== "Annulé";
+    }).length,
+    terminees: operations.filter(op => {
+      const prog = calculerProgression(op);
+      return prog.pourcentage === 100 || op.statut === "Payé";
+    }).length,
+    total: operations.length
+  };
 
   const handleDelete = async (id: string) => {
     if (confirm("Êtes-vous sûr de vouloir supprimer cette opération ?")) {
@@ -147,33 +175,107 @@ export default function Operations() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Opérations de Collecte</h1>
           <p className="text-muted-foreground mt-1">
-            Suivi des opérations terrain ({filteredOperations.length})
+            Gestion et suivi des collectes terrain
           </p>
         </div>
-        <Button className="gap-2" onClick={() => navigate("/operations/nouveau")}>
-          <Plus className="h-4 w-4" />
-          Nouvelle Opération
-        </Button>
       </div>
 
-      {/* Barre de recherche */}
-      <div className="flex gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Rechercher par producteur, agent, numéro..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+      {/* Onglets */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <div className="flex items-center justify-between">
+          <TabsList>
+            <TabsTrigger value="en-cours" className="gap-2">
+              <Clock className="h-4 w-4" />
+              En cours
+              {stats.enCours > 0 && (
+                <Badge variant="secondary" className="ml-1">
+                  {stats.enCours}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="terminees" className="gap-2">
+              <CheckCheck className="h-4 w-4" />
+              Terminées
+              {stats.terminees > 0 && (
+                <Badge variant="secondary" className="ml-1">
+                  {stats.terminees}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="toutes" className="gap-2">
+              <List className="h-4 w-4" />
+              Toutes
+              <Badge variant="secondary" className="ml-1">
+                {stats.total}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger value="nouvelle" className="gap-2">
+              <Plus className="h-4 w-4" />
+              Nouvelle Collecte
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Barre de recherche */}
+          {activeTab !== "nouvelle" && (
+            <div className="flex gap-4 flex-1 max-w-md ml-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Rechercher..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+          )}
         </div>
-        <Button variant="outline" className="gap-2">
-          <Filter className="h-4 w-4" />
-          Filtres
-        </Button>
-      </div>
 
-      {/* Liste des opérations */}
+        {/* Contenu des onglets */}
+        <TabsContent value="en-cours" className="space-y-4">
+          {renderOperationsList(filteredOperations, isLoading, searchQuery)}
+        </TabsContent>
+
+        <TabsContent value="terminees" className="space-y-4">
+          {renderOperationsList(filteredOperations, isLoading, searchQuery)}
+        </TabsContent>
+
+        <TabsContent value="toutes" className="space-y-4">
+          {renderOperationsList(filteredOperations, isLoading, searchQuery)}
+        </TabsContent>
+
+        <TabsContent value="nouvelle" className="space-y-4">
+          <Card className="p-6">
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+                <Plus className="h-8 w-8 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold mb-2">Créer une Nouvelle Collecte</h3>
+                <p className="text-muted-foreground mb-6">
+                  Utilisez ce formulaire uniquement si l'agent n'a pas accès à l'application mobile.
+                  <br />
+                  Les collectes sont normalement créées depuis l'application mobile terrain.
+                </p>
+              </div>
+              <Button size="lg" className="gap-2" onClick={() => navigate("/operations/nouveau")}>
+                <Plus className="h-5 w-5" />
+                Ouvrir le Formulaire de Collecte
+              </Button>
+            </div>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+
+  // Fonction pour rendre la liste des opérations
+  function renderOperationsList(
+    ops: OperationWithRelations[],
+    loading: boolean,
+    query: string
+  ) {
+    return (
       <div className="space-y-4">
         {isLoading ? (
           <div className="flex justify-center py-12">
@@ -343,6 +445,6 @@ export default function Operations() {
           })
         )}
       </div>
-    </div>
-  );
+    );
+  }
 }
