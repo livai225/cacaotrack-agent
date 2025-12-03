@@ -281,12 +281,68 @@ app.delete('/api/parcelles/:id', async (req, res) => {
 
 // Operations
 app.get('/api/operations', async (req, res) => {
-  const operations = await prisma.operation.findMany();
-  res.json(operations);
+  try {
+    const operations = await prisma.operation.findMany({
+      include: {
+        producteur: {
+          select: {
+            id: true,
+            nom_complet: true,
+          }
+        },
+        agent: {
+          select: {
+            id: true,
+            nom: true,
+            prenom: true,
+            code: true,
+          }
+        },
+        village: {
+          select: {
+            id: true,
+            nom: true,
+          }
+        },
+        parcelle: {
+          select: {
+            id: true,
+            code: true,
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    res.json(operations);
+  } catch (error: any) {
+    console.error('Erreur récupération opérations:', error);
+    res.status(500).json({ error: error.message || "Erreur récupération opérations" });
+  }
 });
 app.get('/api/operations/:id', async (req, res) => {
-  const operation = await prisma.operation.findUnique({ where: { id: req.params.id } });
-  res.json(operation);
+  try {
+    const operation = await prisma.operation.findUnique({
+      where: { id: req.params.id },
+      include: {
+        producteur: true,
+        agent: true,
+        village: true,
+        parcelle: true
+      }
+    });
+
+    if (!operation) {
+      return res.status(404).json({ error: "Opération non trouvée" });
+    }
+
+    res.json(operation);
+  } catch (error: any) {
+    console.error('Erreur récupération opération:', error);
+    res.status(500).json({ error: error.message || "Erreur récupération opération" });
+  }
 });
 
 app.post('/api/operations', async (req, res) => {
