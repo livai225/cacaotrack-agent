@@ -236,6 +236,11 @@ model Parcelle {
   superficie_declaree   Float     @default(0)
   superficie_reelle     Float?
   
+  // Mapping GPS (pour app mobile)
+  polygone_gps          String?   // JSON array de coordonnées [{lat, lng}, ...]
+  superficie_gps        Float?    // Calculée automatiquement en hectares
+  perimetre             Float?    // En mètres
+  
   // Agronomie
   age_plantation        Int?      // Années
   annee_creation        Int?
@@ -316,6 +321,10 @@ model Agent {
   email                 String?   @unique
   telephone             String
   statut                String    @default("actif") // actif, inactif, suspendu
+  
+  // Authentification (pour app mobile)
+  username              String?   @unique // Login pour l'app mobile
+  password_hash         String?   // Mot de passe hashé
   
   // Identité
   date_naissance        DateTime?
@@ -432,6 +441,10 @@ model Operation {
   retenue_mec_taux      Float     @default(0)
   retenue_epargne       Boolean   @default(false)
   retenue_epargne_taux  Float     @default(0)
+
+  // Signature Producteur (pour app mobile)
+  signature_producteur  String?   // Image Base64 ou URL
+  date_signature        DateTime?
 
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
