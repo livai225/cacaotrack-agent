@@ -4,6 +4,7 @@ import cors from 'cors';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { PrismaClient } from '@prisma/client';
+import { createRealtimeEmitter } from './realtime';
 
 const prisma = new PrismaClient();
 const app = express();
@@ -30,11 +31,8 @@ io.on('connection', (socket) => {
   });
 });
 
-// Fonction helper pour émettre des événements
-const emitUpdate = (event: string, data: any) => {
-  io.emit(event, data);
-  console.log(`📡 Événement émis: ${event}`);
-};
+// Émetteur d'événements temps réel
+const rt = createRealtimeEmitter(io);
 
 // --- Routes de Santé et Informations ---
 
@@ -487,7 +485,7 @@ app.post('/api/operations', async (req, res) => {
     console.log('✅ Opération créée avec succès:', operation.id);
     
     // Émettre l'événement temps réel
-    emitUpdate('operation:created', operation);
+    rt.operationCreated(operation);
     
     res.json(operation);
   } catch (e: any) {
@@ -515,7 +513,7 @@ app.put('/api/operations/:id', async (req, res) => {
     });
     
     // Émettre l'événement temps réel
-    emitUpdate('operation:updated', updated);
+    rt.operationUpdated(updated);
     
     res.json(updated);
   } catch (error: any) {
@@ -530,7 +528,7 @@ app.delete('/api/operations/:id', async (req, res) => {
     await prisma.operation.delete({ where: { id } });
     
     // Émettre l'événement temps réel
-    emitUpdate('operation:deleted', { id });
+    rt.operationDeleted(id);
     
     res.json({ message: "Opération supprimée" });
   } catch (error: any) {
