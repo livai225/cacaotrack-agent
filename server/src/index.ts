@@ -5,6 +5,8 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { PrismaClient } from '@prisma/client';
 import { createRealtimeEmitter } from './realtime';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
 const app = express();
@@ -101,6 +103,114 @@ app.get('/api/postgis', async (req, res) => {
       error: 'PostGIS check failed',
       timestamp: new Date().toISOString()
     });
+  }
+});
+
+// ==================== AUTHENTIFICATION ====================
+
+const JWT_SECRET = process.env.JWT_SECRET || 'cacaotrack-secret-key-change-in-production';
+
+// Route de login pour les agents (app mobile)
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username et password requis' });
+    }
+
+    // Chercher l'agent par username
+    const agent = await prisma.agent.findUnique({
+      where: { username },
+      select: {
+        id: true,
+        code: true,
+        nom: true,
+        prenom: true,
+        email: true,
+        telephone: true,
+        photo: true,
+        password_hash: true,
+        statut: true,
+      }
+    });
+
+    if (!agent) {
+      return res.status(401).json({ error: 'Identifiants incorrects' });
+    }
+
+    if (agent.statut !== 'actif') {
+      return res.status(403).json({ error: 'Compte inactif' });
+    }
+
+    if (!agent.password_hash) {
+      return res.status(401).json({ error: 'Mot de passe non configuré' });
+    }
+
+    // Vérifier le mot de passe
+    const isValidPassword = await bcrypt.compare(password, agent.password_hash);
+
+    if (!isValidPassword) {
+      return res.status(401).json({ error: 'Identifiants incorrects' });
+    }
+
+    // Générer un token JWT
+    const token = jwt.sign(
+      { agentId: agent.id, username: agent.username },
+      JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    // Retourner les infos de l'agent (sans le password_hash)
+    const { password_hash, ...agentData } = agent;
+
+    res.json({
+      success: true,
+      agent: agentData,
+      token,
+    });
+
+  } catch (error: any) {
+    console.error('Erreur login:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Route pour créer/mettre à jour le mot de passe d'un agent
+app.post('/api/agents/:id/password', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { password } = req.body;
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({ error: 'Mot de passe trop court (min 6 caractères)' });
+    }
+
+    // Hasher le mot de passe
+    const password_hash = await bcrypt.hash(password, 10);
+
+    // Mettre à jour l'agent
+    const agent = await prisma.agent.update({
+      where: { id },
+      data: { password_hash },
+      select: {
+        id: true,
+        code: true,
+        nom: true,
+        prenom: true,
+        username: true,
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Mot de passe mis à jour',
+      agent,
+    });
+
+  } catch (error: any) {
+    console.error('Erreur mise à jour password:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
