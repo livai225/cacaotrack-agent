@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import { useState, useEffect } from "react";
 import { api } from "@/services/api";
+import { socketService } from "@/services/socket";
 
 // Types
 interface OperationStats {
@@ -59,6 +60,25 @@ export default function OperationsDashboard() {
 
   useEffect(() => {
     loadStats();
+
+    // Connexion Socket.IO pour le temps réel
+    socketService.connect();
+
+    // Recharger les stats quand une opération change
+    const handleOperationChange = () => {
+      console.log('📡 Opération modifiée, rechargement des stats...');
+      loadStats();
+    };
+
+    socketService.on('operation:created', handleOperationChange);
+    socketService.on('operation:updated', handleOperationChange);
+    socketService.on('operation:deleted', handleOperationChange);
+
+    return () => {
+      socketService.off('operation:created', handleOperationChange);
+      socketService.off('operation:updated', handleOperationChange);
+      socketService.off('operation:deleted', handleOperationChange);
+    };
   }, [timeRange]);
 
   const loadStats = async () => {

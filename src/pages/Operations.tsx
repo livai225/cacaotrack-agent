@@ -10,7 +10,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/services/api";
+import { socketService } from "@/services/socket";
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 
 // Type étendu pour inclure les relations
 interface OperationWithRelations {
@@ -80,6 +82,41 @@ export default function Operations() {
       }
     };
     loadData();
+
+    // Connexion Socket.IO pour le temps réel
+    socketService.connect();
+
+    // Écouter les événements temps réel
+    const handleOperationCreated = (operation: any) => {
+      console.log('📡 Nouvelle opération reçue:', operation);
+      setOperations(prev => [operation, ...prev]);
+      toast.success('Nouvelle collecte créée !', {
+        description: `Par ${operation.producteur?.nom_complet || 'Producteur inconnu'}`
+      });
+    };
+
+    const handleOperationUpdated = (operation: any) => {
+      console.log('📡 Opération mise à jour:', operation);
+      setOperations(prev => prev.map(op => op.id === operation.id ? operation : op));
+      toast.info('Collecte mise à jour');
+    };
+
+    const handleOperationDeleted = (data: { id: string }) => {
+      console.log('📡 Opération supprimée:', data.id);
+      setOperations(prev => prev.filter(op => op.id !== data.id));
+      toast.error('Collecte supprimée');
+    };
+
+    socketService.on('operation:created', handleOperationCreated);
+    socketService.on('operation:updated', handleOperationUpdated);
+    socketService.on('operation:deleted', handleOperationDeleted);
+
+    // Nettoyage
+    return () => {
+      socketService.off('operation:created', handleOperationCreated);
+      socketService.off('operation:updated', handleOperationUpdated);
+      socketService.off('operation:deleted', handleOperationDeleted);
+    };
   }, []);
 
   // Calculer la progression d'une opération

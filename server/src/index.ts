@@ -1,16 +1,40 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE"]
+  }
+});
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 // Augmenter la limite pour les photos en Base64 (50MB)
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Socket.IO - Gestion des connexions temps réel
+io.on('connection', (socket) => {
+  console.log('✅ Client connecté:', socket.id);
+
+  socket.on('disconnect', () => {
+    console.log('❌ Client déconnecté:', socket.id);
+  });
+});
+
+// Fonction helper pour émettre des événements
+const emitUpdate = (event: string, data: any) => {
+  io.emit(event, data);
+  console.log(`📡 Événement émis: ${event}`);
+};
 
 // --- Routes de Santé et Informations ---
 
@@ -451,10 +475,20 @@ app.post('/api/operations', async (req, res) => {
     console.log('💾 Création de l\'opération avec les données:', JSON.stringify(operationData, null, 2));
 
     const operation = await prisma.operation.create({
-      data: operationData
+      data: operationData,
+      include: {
+        producteur: { select: { id: true, nom_complet: true } },
+        agent: { select: { id: true, nom: true, prenom: true, code: true } },
+        village: { select: { id: true, nom: true } },
+        parcelle: { select: { id: true, code: true } }
+      }
     });
 
     console.log('✅ Opération créée avec succès:', operation.id);
+    
+    // Émettre l'événement temps réel
+    emitUpdate('operation:created', operation);
+    
     res.json(operation);
   } catch (e: any) {
     console.error('❌ Erreur lors de la création de l\'opération:', e);
@@ -467,9 +501,37 @@ app.post('/api/operations', async (req, res) => {
   }
 });
 
+app.put('/api/operations/:id', async (req, res) => {
+  try {
+    const updated = await prisma.operation.update({
+      where: { id: req.params.id },
+      data: req.body,
+      include: {
+        producteur: { select: { id: true, nom_complet: true } },
+        agent: { select: { id: true, nom: true, prenom: true, code: true } },
+        village: { select: { id: true, nom: true } },
+        parcelle: { select: { id: true, code: true } }
+      }
+    });
+    
+    // Émettre l'événement temps réel
+    emitUpdate('operation:updated', updated);
+    
+    res.json(updated);
+  } catch (error: any) {
+    console.error(error);
+    res.status(500).json({ error: error.message || "Erreur mise à jour opération" });
+  }
+});
+
 app.delete('/api/operations/:id', async (req, res) => {
   try {
-    await prisma.operation.delete({ where: { id: req.params.id } });
+    const id = req.params.id;
+    await prisma.operation.delete({ where: { id } });
+    
+    // Émettre l'événement temps réel
+    emitUpdate('operation:deleted', { id });
+    
     res.json({ message: "Opération supprimée" });
   } catch (error: any) {
     console.error(error);
@@ -769,6 +831,7 @@ app.delete('/api/agents/:idAgent/regions/:idRegion', async (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`Serveur ASCO Track démarré sur http://localhost:${PORT}`);
+httpServer.listen(PORT, () => {
+  console.log(`🚀 Serveur ASCO Track démarré sur http://localhost:${PORT}`);
+  console.log(`⚡ WebSocket activé pour le temps réel`);
 });
