@@ -9,7 +9,7 @@ import {
   Image,
 } from 'react-native';
 import { TextInput, Button, Title, Card, List } from 'react-native-paper';
-import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+import * as ImagePicker from 'expo-image-picker';
 import { apiService } from '../services/api.service';
 import { useSync } from '../contexts/SyncContext';
 
@@ -50,36 +50,46 @@ export default function ProducteurScreen({ navigation }: any) {
       [
         {
           text: 'Prendre une photo',
-          onPress: () => {
-            launchCamera(
-              {
-                mediaType: 'photo',
-                quality: 0.7,
-                includeBase64: true,
-              },
-              (response) => {
-                if (response.assets && response.assets[0].base64) {
-                  setPhoto(`data:image/jpeg;base64,${response.assets[0].base64}`);
-                }
-              }
-            );
+          onPress: async () => {
+            const { status } = await ImagePicker.requestCameraPermissionsAsync();
+            if (status !== 'granted') {
+              Alert.alert('Permission refusée', 'Veuillez autoriser l\'accès à la caméra');
+              return;
+            }
+
+            const result = await ImagePicker.launchCameraAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              quality: 0.7,
+              base64: true,
+              allowsEditing: true,
+              aspect: [4, 3],
+            });
+
+            if (!result.canceled && result.assets[0].base64) {
+              setPhoto(`data:image/jpeg;base64,${result.assets[0].base64}`);
+            }
           },
         },
         {
           text: 'Choisir dans la galerie',
-          onPress: () => {
-            launchImageLibrary(
-              {
-                mediaType: 'photo',
-                quality: 0.7,
-                includeBase64: true,
-              },
-              (response) => {
-                if (response.assets && response.assets[0].base64) {
-                  setPhoto(`data:image/jpeg;base64,${response.assets[0].base64}`);
-                }
-              }
-            );
+          onPress: async () => {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+              Alert.alert('Permission refusée', 'Veuillez autoriser l\'accès à la galerie');
+              return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              quality: 0.7,
+              base64: true,
+              allowsEditing: true,
+              aspect: [4, 3],
+            });
+
+            if (!result.canceled && result.assets[0].base64) {
+              setPhoto(`data:image/jpeg;base64,${result.assets[0].base64}`);
+            }
           },
         },
         { text: 'Annuler', style: 'cancel' },

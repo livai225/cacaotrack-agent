@@ -8,7 +8,7 @@ import {
   Platform,
 } from 'react-native';
 import { TextInput, Button, Title, Card, List, Text } from 'react-native-paper';
-import Geolocation from 'react-native-geolocation-service';
+import * as Location from 'expo-location';
 import { apiService } from '../services/api.service';
 import { useSync } from '../contexts/SyncContext';
 
@@ -38,21 +38,28 @@ export default function VillageScreen({ navigation }: any) {
     }
   };
 
-  const getCurrentLocation = () => {
+  const getCurrentLocation = async () => {
     setGettingLocation(true);
-    Geolocation.getCurrentPosition(
-      (position) => {
-        setLatitude(position.coords.latitude.toString());
-        setLongitude(position.coords.longitude.toString());
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission refusée', 'Veuillez autoriser l\'accès à la localisation');
         setGettingLocation(false);
-        Alert.alert('Succès', 'Position GPS enregistrée');
-      },
-      (error) => {
-        setGettingLocation(false);
-        Alert.alert('Erreur GPS', error.message);
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
-    );
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+      
+      setLatitude(location.coords.latitude.toString());
+      setLongitude(location.coords.longitude.toString());
+      setGettingLocation(false);
+      Alert.alert('Succès', 'Position GPS enregistrée');
+    } catch (error: any) {
+      setGettingLocation(false);
+      Alert.alert('Erreur GPS', error.message || 'Impossible d\'obtenir la position');
+    }
   };
 
   const handleSubmit = async () => {

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
 import MapView, { Polygon, Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Button, Text, Card, FAB } from 'react-native-paper';
-import Geolocation from 'react-native-geolocation-service';
+import * as Location from 'expo-location';
 
 interface Point {
   latitude: number;
@@ -21,41 +21,24 @@ export default function ParcelleMapScreen({ navigation, route }: any) {
   });
 
   useEffect(() => {
-    // Obtenir la position initiale
-    getCurrentPosition();
+    let subscription: Location.LocationSubscription | null = null;
 
-    // Suivre la position en temps réel
-    const watchId = Geolocation.watchPosition(
-      (position) => {
-        const newPos = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        };
-        setCurrentPosition(newPos);
-
-        // Ajouter automatiquement des points pendant le mapping
-        if (isMapping) {
-          addPoint(newPos);
+    const startWatching = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission GPS refusée', 'Veuillez autoriser l\'accès à la localisation');
+          return;
         }
-      },
-      (error) => console.error('Erreur GPS:', error),
-      {
-        enableHighAccuracy: true,
-        distanceFilter: 5, // Ajouter un point tous les 5 mètres
-        interval: 1000,
-        fastestInterval: 500,
-      }
-    );
 
-    return () => Geolocation.clearWatch(watchId);
-  }, [isMapping]);
-
-  const getCurrentPosition = () => {
-    Geolocation.getCurrentPosition(
-      (position) => {
+        // Position initiale
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
+        
         const pos = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
         };
         setCurrentPosition(pos);
         setRegion({
@@ -63,14 +46,40 @@ export default function ParcelleMapScreen({ navigation, route }: any) {
           latitudeDelta: 0.01,
           longitudeDelta: 0.01,
         });
-      },
-      (error) => {
+
+        // Suivi en temps réel
+        subscription = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.High,
+            distanceInterval: 5, // Ajouter un point tous les 5 mètres
+          },
+          (location) => {
+            const newPos = {
+              latitude: location.coords.latitude,
+              longitude: location.coords.longitude,
+            };
+            setCurrentPosition(newPos);
+
+            // Ajouter automatiquement des points pendant le mapping
+            if (isMapping) {
+              addPoint(newPos);
+            }
+          }
+        );
+      } catch (error) {
+        console.error('Erreur GPS:', error);
         Alert.alert('Erreur GPS', 'Impossible d\'obtenir votre position');
-        console.error(error);
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
-    );
-  };
+      }
+    };
+
+    startWatching();
+
+    return () => {
+      if (subscription) {
+        subscription.remove();
+      }
+    };
+  }, [isMapping]);
 
   const addPoint = (point: Point) => {
     setPoints((prev) => {
