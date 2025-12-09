@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "CacaoTrackMobile",
-    "slug": "CacaoTrackMobile",
+    "name": "CacaoTrack Mobile",
+    "slug": "cacaotrack-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -10,21 +10,51 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#8B4513"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.cacaotrack.mobile"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#8B4513"
       },
+      "package": "com.cacaotrack.mobile",
+      "versionCode": 1,
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Autoriser CacaoTrack à accéder à votre position pour cartographier les parcelles."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "CacaoTrack a besoin d'accéder à vos photos pour prendre des photos des producteurs.",
+          "cameraPermission": "CacaoTrack a besoin d'accéder à votre caméra pour prendre des photos des producteurs."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "cacaotrack-mobile-app"
+      }
     }
   }
 }
