@@ -26,7 +26,7 @@ dependencies:
   hive_flutter: ^1.1.0
   
   # GPS & Location
-  geolocator: ^11.0.0
+  geolocator: ^10.1.0
   permission_handler: ^11.2.0
   
   # Camera & Photos
