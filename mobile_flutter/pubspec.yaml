@@ -25,9 +25,9 @@ dependencies:
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   
-  # GPS & Location
-  geolocator: ^10.1.0
-  permission_handler: ^11.2.0
+  # GPS & Location (temporairement désactivé pour build)
+  # geolocator: ^10.1.0
+  # permission_handler: ^11.2.0
   
   # Camera & Photos
   image_picker: ^1.0.7
