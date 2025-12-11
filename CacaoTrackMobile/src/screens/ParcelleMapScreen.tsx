@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
-import MapView, { Polygon, Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import { Button, Text, Card, FAB } from 'react-native-paper';
+import { View, StyleSheet, Alert, ScrollView } from 'react-native';
+import { Button, Text, Card, FAB, List } from 'react-native-paper';
 import * as Location from 'expo-location';
 
 interface Point {
@@ -206,65 +205,56 @@ export default function ParcelleMapScreen({ navigation, route }: any) {
 
   return (
     <View style={styles.container}>
-      <MapView
-        provider={PROVIDER_GOOGLE}
-        style={styles.map}
-        region={region}
-        onRegionChangeComplete={setRegion}
-        showsUserLocation
-        showsMyLocationButton
-      >
-        {/* Position actuelle */}
-        {currentPosition && (
-          <Marker
-            coordinate={currentPosition}
-            title="Ma position"
-            pinColor="blue"
-          />
-        )}
-
-        {/* Points enregistrés */}
-        {points.map((point, index) => (
-          <Marker
-            key={index}
-            coordinate={point}
-            title={`Point ${index + 1}`}
-            pinColor="red"
-          />
-        ))}
-
-        {/* Polygone */}
-        {points.length > 2 && (
-          <Polygon
-            coordinates={points}
-            strokeColor="#8B4513"
-            fillColor="rgba(139, 69, 19, 0.3)"
-            strokeWidth={2}
-          />
-        )}
-      </MapView>
-
-      {/* Panneau d'informations */}
-      <Card style={styles.infoCard}>
-        <Card.Content>
-          <Text style={styles.infoText}>
-            Points enregistrés: <Text style={styles.bold}>{points.length}</Text>
-          </Text>
-          {points.length > 2 && (
-            <>
+      <ScrollView style={styles.scrollView}>
+        {/* Panneau d'informations */}
+        <Card style={styles.infoCard}>
+          <Card.Content>
+            <Text variant="titleLarge" style={styles.title}>📍 Mapping GPS de la Parcelle</Text>
+            
+            <Text style={styles.infoText}>
+              Points enregistrés: <Text style={styles.bold}>{points.length}</Text>
+            </Text>
+            
+            {currentPosition && (
               <Text style={styles.infoText}>
-                Superficie: <Text style={styles.bold}>{calculateArea().toFixed(2)} ha</Text>
+                Position actuelle: {currentPosition.latitude.toFixed(6)}, {currentPosition.longitude.toFixed(6)}
               </Text>
-              <Text style={styles.infoText}>
-                Périmètre: <Text style={styles.bold}>{calculatePerimeter().toFixed(0)} m</Text>
-              </Text>
-            </>
-          )}
-          <Text style={[styles.infoText, isMapping && styles.mappingActive]}>
-            {isMapping ? '🟢 Mapping en cours...' : '⚪ Mapping en pause'}
-          </Text>
-        </Card.Content>
-      </Card>
+            )}
+            
+            {points.length > 2 && (
+              <>
+                <Text style={styles.infoText}>
+                  Superficie: <Text style={styles.bold}>{calculateArea().toFixed(2)} ha</Text>
+                </Text>
+                <Text style={styles.infoText}>
+                  Périmètre: <Text style={styles.bold}>{calculatePerimeter().toFixed(0)} m</Text>
+                </Text>
+              </>
+            )}
+            
+            <Text style={[styles.infoText, isMapping && styles.mappingActive]}>
+              {isMapping ? '🟢 Mapping en cours...' : '⚪ Mapping en pause'}
+            </Text>
+          </Card.Content>
+        </Card>
+
+        {/* Liste des points */}
+        {points.length > 0 && (
+          <Card style={styles.pointsCard}>
+            <Card.Content>
+              <Text variant="titleMedium" style={styles.subtitle}>Points GPS enregistrés</Text>
+              {points.map((point, index) => (
+                <List.Item
+                  key={index}
+                  title={`Point ${index + 1}`}
+                  description={`Lat: ${point.latitude.toFixed(6)}, Lon: ${point.longitude.toFixed(6)}`}
+                  left={props => <List.Icon {...props} icon="map-marker" color="#8B4513" />}
+                />
+              ))}
+            </Card.Content>
+          </Card>
+        )}
+      </ScrollView>
 
       {/* Boutons d'action */}
       <View style={styles.controls}>
@@ -324,14 +314,25 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  map: {
+  scrollView: {
     flex: 1,
   },
   infoCard: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    right: 16,
+    margin: 16,
+    elevation: 4,
+  },
+  title: {
+    marginBottom: 12,
+    color: '#8B4513',
+    fontWeight: 'bold',
+  },
+  subtitle: {
+    marginBottom: 8,
+    color: '#8B4513',
+  },
+  pointsCard: {
+    margin: 16,
+    marginTop: 0,
     elevation: 4,
   },
   infoText: {
@@ -347,10 +348,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   controls: {
-    position: 'absolute',
-    bottom: 16,
-    left: 16,
-    right: 16,
+    padding: 16,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#ddd',
   },
   button: {
     marginTop: 8,
