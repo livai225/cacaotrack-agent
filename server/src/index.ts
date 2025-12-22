@@ -132,6 +132,7 @@ app.post('/api/auth/login', async (req, res) => {
         photo: true,
         password_hash: true,
         statut: true,
+        username: true,
       }
     });
 
@@ -256,6 +257,106 @@ app.get('/api/organisations/:id', async (req, res) => {
   }
 });
 
+app.post('/api/organisations', async (req, res) => {
+  try {
+    const data = req.body;
+    console.log('📥 Données reçues pour organisation:', JSON.stringify(data, null, 2));
+    
+    // Validation des champs obligatoires
+    if (!data.nom) {
+      return res.status(400).json({ error: "Le champ 'nom' est obligatoire" });
+    }
+    
+    // Génération du code si absent
+    const code = data.code || `ORG-${Date.now()}`;
+    
+    // Gestion du champ president_contact (peut être string, array, ou déjà JSON)
+    let president_contact: any[] = [];
+    if (data.president_contact) {
+      if (Array.isArray(data.president_contact)) {
+        president_contact = data.president_contact;
+      } else if (typeof data.president_contact === 'string') {
+        try {
+          // Essayer de parser si c'est une string JSON
+          const parsed = JSON.parse(data.president_contact);
+          president_contact = Array.isArray(parsed) ? parsed : [data.president_contact];
+        } catch {
+          // Sinon, traiter comme un string simple
+          president_contact = [data.president_contact];
+        }
+      }
+    }
+    
+    // Gestion du champ secretaire_contact
+    let secretaire_contact: any[] | null = null;
+    if (data.secretaire_contact) {
+      if (Array.isArray(data.secretaire_contact)) {
+        secretaire_contact = data.secretaire_contact;
+      } else if (typeof data.secretaire_contact === 'string') {
+        try {
+          const parsed = JSON.parse(data.secretaire_contact);
+          secretaire_contact = Array.isArray(parsed) ? parsed : [data.secretaire_contact];
+        } catch {
+          secretaire_contact = [data.secretaire_contact];
+        }
+      }
+    }
+    
+    // Préparation des données conformes au schéma
+    const orgData: any = {
+      code,
+      nom: data.nom,
+      type: data.type || 'Coopérative',
+      statut: data.statut || 'actif',
+      localite: data.localite || 'Indéfini',
+      
+      // Champs obligatoires avec valeurs par défaut
+      region: data.region || 'Indéfini',
+      departement: data.departement || 'Indéfini',
+      sous_prefecture: data.sous_prefecture || 'Indéfini',
+      
+      // Contacts (Conversion string -> Json/Array)
+      // Prisma attend un array pour les champs Json
+      president_nom: data.president_nom || 'Non défini',
+      president_contact: president_contact.length > 0 ? president_contact : [],
+      secretaire_nom: data.secretaire_nom || null,
+      secretaire_contact: secretaire_contact && secretaire_contact.length > 0 ? secretaire_contact : null,
+      
+      // Champs optionnels
+      siege_social: data.siege_social || null,
+      email: data.email || null,
+      telephone: data.telephone || null,
+      dg_nom: data.dg_nom || null,
+      dg_contact: data.dg_contact ? (Array.isArray(data.dg_contact) ? data.dg_contact : [data.dg_contact]) : null,
+      tresorier_nom: data.tresorier_nom || null,
+      tresorier_contact: data.tresorier_contact ? (Array.isArray(data.tresorier_contact) ? data.tresorier_contact : [data.tresorier_contact]) : null,
+    };
+
+    console.log('💾 Création organisation avec données:', JSON.stringify(orgData, null, 2));
+    const org = await prisma.organisation.create({ data: orgData });
+    console.log('✅ Organisation créée avec succès:', org.id);
+    res.json(org);
+  } catch (error: any) {
+    console.error('❌ Erreur création organisation:', error);
+    console.error('Stack:', error.stack);
+    console.error('Code erreur:', error.code);
+    
+    // Gestion des erreurs spécifiques Prisma
+    if (error.code === 'P2002') {
+      return res.status(409).json({ 
+        error: "Une organisation avec ce code existe déjà",
+        field: error.meta?.target 
+      });
+    }
+    
+    res.status(500).json({ 
+      error: error.message || "Erreur création organisation",
+      code: error.code,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+});
+
 app.put('/api/organisations/:id', async (req, res) => {
   try {
     const updated = await prisma.organisation.update({
@@ -287,6 +388,104 @@ app.get('/api/sections', async (req, res) => {
 app.get('/api/sections/:id', async (req, res) => {
   const section = await prisma.section.findUnique({ where: { id: req.params.id } });
   res.json(section);
+});
+
+app.post('/api/sections', async (req, res) => {
+  try {
+    const data = req.body;
+    console.log('📥 Données reçues pour section:', JSON.stringify(data, null, 2));
+    
+    // Validation des champs obligatoires
+    if (!data.nom) {
+      return res.status(400).json({ error: "Le champ 'nom' est obligatoire" });
+    }
+    if (!data.id_organisation) {
+      return res.status(400).json({ error: "Le champ 'id_organisation' est obligatoire" });
+    }
+    
+    // Vérifier que l'organisation existe
+    const organisation = await prisma.organisation.findUnique({
+      where: { id: data.id_organisation }
+    });
+    
+    if (!organisation) {
+      return res.status(404).json({ 
+        error: "Organisation introuvable",
+        id_organisation: data.id_organisation 
+      });
+    }
+    
+    // Génération du code si absent
+    const code = data.code || `SEC-${Date.now()}`;
+    
+    // Gestion du champ president_contact
+    let president_contact: any[] = [];
+    if (data.responsable_contact || data.president_contact) {
+      const contact = data.responsable_contact || data.president_contact;
+      if (Array.isArray(contact)) {
+        president_contact = contact;
+      } else if (typeof contact === 'string') {
+        try {
+          const parsed = JSON.parse(contact);
+          president_contact = Array.isArray(parsed) ? parsed : [contact];
+        } catch {
+          president_contact = [contact];
+        }
+      }
+    }
+    
+    // Mapping des données mobile vers schéma
+    const sectionData = {
+      code,
+      nom: data.nom,
+      id_organisation: data.id_organisation,
+      statut: data.statut || 'actif',
+      localite: data.localite || '',
+      
+      // Mapping responsable -> president
+      president_nom: data.responsable_nom || data.president_nom || 'Non défini',
+      president_contact: president_contact,
+      
+      // Champs optionnels
+      point_geographique: data.point_geographique || null,
+      secretaire_nom: data.secretaire_nom || null,
+      secretaire_contact: data.secretaire_contact ? (Array.isArray(data.secretaire_contact) ? data.secretaire_contact : [data.secretaire_contact]) : null,
+      magasinier_nom: data.magasinier_nom || null,
+      magasinier_contact: data.magasinier_contact ? (Array.isArray(data.magasinier_contact) ? data.magasinier_contact : [data.magasinier_contact]) : null,
+      peseur_nom: data.peseur_nom || null,
+      peseur_contact: data.peseur_contact ? (Array.isArray(data.peseur_contact) ? data.peseur_contact : [data.peseur_contact]) : null,
+    };
+
+    console.log('💾 Création section avec données:', JSON.stringify(sectionData, null, 2));
+    const section = await prisma.section.create({ data: sectionData });
+    console.log('✅ Section créée avec succès:', section.id);
+    res.json(section);
+  } catch (error: any) {
+    console.error('❌ Erreur création section:', error);
+    console.error('Stack:', error.stack);
+    console.error('Code erreur:', error.code);
+    
+    // Gestion des erreurs spécifiques Prisma
+    if (error.code === 'P2002') {
+      return res.status(409).json({ 
+        error: "Une section avec ce code existe déjà",
+        field: error.meta?.target 
+      });
+    }
+    
+    if (error.code === 'P2003') {
+      return res.status(404).json({ 
+        error: "Référence invalide (organisation introuvable)",
+        field: error.meta?.field_name 
+      });
+    }
+    
+    res.status(500).json({ 
+      error: error.message || "Erreur création section",
+      code: error.code,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
 });
 
 app.put('/api/sections/:id', async (req, res) => {
@@ -322,6 +521,101 @@ app.get('/api/villages/:id', async (req, res) => {
   res.json(village);
 });
 
+app.post('/api/villages', async (req, res) => {
+  try {
+    const data = req.body;
+    console.log('📥 Données reçues pour village:', JSON.stringify(data, null, 2));
+    
+    // Validation des champs obligatoires
+    if (!data.nom) {
+      return res.status(400).json({ error: "Le champ 'nom' est obligatoire" });
+    }
+    if (!data.id_section) {
+      return res.status(400).json({ error: "Le champ 'id_section' est obligatoire" });
+    }
+    
+    // Vérifier que la section existe
+    const section = await prisma.section.findUnique({
+      where: { id: data.id_section }
+    });
+    
+    if (!section) {
+      return res.status(404).json({ 
+        error: "Section introuvable",
+        id_section: data.id_section 
+      });
+    }
+    
+    // Génération du code si absent
+    const code = data.code || `VIL-${Date.now()}`;
+    
+    // Gestion du champ chef_contact
+    let chef_contact: any[] | null = null;
+    if (data.chef_contact) {
+      if (Array.isArray(data.chef_contact)) {
+        chef_contact = data.chef_contact;
+      } else if (typeof data.chef_contact === 'string') {
+        try {
+          const parsed = JSON.parse(data.chef_contact);
+          chef_contact = Array.isArray(parsed) ? parsed : [data.chef_contact];
+        } catch {
+          chef_contact = [data.chef_contact];
+        }
+      }
+    }
+    
+    const villageData = {
+      code,
+      nom: data.nom,
+      id_section: data.id_section,
+      type: data.type || 'Village',
+      statut: data.statut || 'actif',
+      localite: data.localite || data.nom, // Localité obligatoire
+      
+      // Démographie
+      nombre_habitants: data.nombre_habitants ? parseInt(data.nombre_habitants) : 0,
+      nombre_hommes: data.nombre_hommes ? parseInt(data.nombre_hommes) : 0,
+      nombre_femmes: data.nombre_femmes ? parseInt(data.nombre_femmes) : 0,
+      nombre_enfants: data.nombre_enfants ? parseInt(data.nombre_enfants) : 0,
+      nombre_enfants_scolarises: data.nombre_enfants_scolarises ? parseInt(data.nombre_enfants_scolarises) : 0,
+      
+      // Autorité
+      chef_nom: data.chef_nom || null,
+      chef_contact: chef_contact,
+    };
+
+    console.log('💾 Création village avec données:', JSON.stringify(villageData, null, 2));
+    const village = await prisma.village.create({ data: villageData });
+    console.log('✅ Village créé avec succès:', village.id);
+    res.json(village);
+  } catch (error: any) {
+    console.error('❌ Erreur création village:', error);
+    console.error('Stack:', error.stack);
+    console.error('Code erreur:', error.code);
+    
+    // Gestion des erreurs spécifiques Prisma
+    if (error.code === 'P2002') {
+      return res.status(409).json({ 
+        error: "Un village avec ce code existe déjà",
+        field: error.meta?.target 
+      });
+    }
+    
+    if (error.code === 'P2003') {
+      return res.status(404).json({ 
+        error: "Référence invalide (section introuvable)",
+        field: error.meta?.field_name 
+      });
+    }
+    
+    res.status(500).json({ 
+      error: error.message || "Erreur création village",
+      code: error.code,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+});
+
 app.put('/api/villages/:id', async (req, res) => {
   try {
     const updated = await prisma.village.update({
@@ -355,6 +649,96 @@ app.get('/api/producteurs/:id', async (req, res) => {
   res.json(producteur);
 });
 
+app.post('/api/producteurs', async (req, res) => {
+  try {
+    const data = req.body;
+    console.log('📥 Données reçues pour producteur:', JSON.stringify(data, null, 2));
+    
+    // Validation des champs obligatoires
+    if (!data.nom_complet) {
+      return res.status(400).json({ error: "Le champ 'nom_complet' est obligatoire" });
+    }
+    if (!data.id_village) {
+      return res.status(400).json({ error: "Le champ 'id_village' est obligatoire" });
+    }
+    
+    // Vérifier que le village existe
+    const village = await prisma.village.findUnique({
+      where: { id: data.id_village }
+    });
+    
+    if (!village) {
+      return res.status(404).json({ 
+        error: "Village introuvable",
+        id_village: data.id_village 
+      });
+    }
+    
+    // Génération du code si absent
+    const code = data.code || `PROD-${Date.now()}`;
+    
+    const producteurData = {
+      code,
+      nom_complet: data.nom_complet,
+      id_village: data.id_village,
+      statut: data.statut || 'actif',
+      
+      // Identité
+      sexe: data.sexe || 'M',
+      date_naissance: data.date_naissance ? new Date(data.date_naissance) : null,
+      lieu_naissance: data.lieu_naissance || null,
+      nationalite: data.nationalite || null,
+      type_piece: data.type_piece || null,
+      numero_piece: data.numero_piece || null,
+      
+      // Contact
+      telephone_1: data.telephone || data.telephone_1 || null,
+      telephone_2: data.telephone_2 || null,
+      niveau_etude: data.niveau_etude || null,
+      alphabete: data.alphabete || false,
+      
+      // Ménage
+      statut_matrimonial: data.situation_matrimoniale || data.statut_matrimonial || null,
+      nb_epouses: data.nb_epouses ? parseInt(data.nb_epouses) : 0,
+      nb_enfants: data.nb_enfants ? parseInt(data.nb_enfants) : 0,
+      nb_personnes_charge: data.nb_personnes_charge ? parseInt(data.nb_personnes_charge) : 0,
+      
+      // Photo
+      photo_planteur: data.photo || data.photo_planteur || null,
+    };
+
+    console.log('💾 Création producteur avec données:', JSON.stringify(producteurData, null, 2));
+    const producteur = await prisma.producteur.create({ data: producteurData });
+    console.log('✅ Producteur créé avec succès:', producteur.id);
+    res.json(producteur);
+  } catch (error: any) {
+    console.error('❌ Erreur création producteur:', error);
+    console.error('Stack:', error.stack);
+    console.error('Code erreur:', error.code);
+    
+    // Gestion des erreurs spécifiques Prisma
+    if (error.code === 'P2002') {
+      return res.status(409).json({ 
+        error: "Un producteur avec ce code existe déjà",
+        field: error.meta?.target 
+      });
+    }
+    
+    if (error.code === 'P2003') {
+      return res.status(404).json({ 
+        error: "Référence invalide (village introuvable)",
+        field: error.meta?.field_name 
+      });
+    }
+    
+    res.status(500).json({ 
+      error: error.message || "Erreur création producteur",
+      code: error.code,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+});
+
 app.put('/api/producteurs/:id', async (req, res) => {
   try {
     const updated = await prisma.producteur.update({
@@ -386,6 +770,88 @@ app.get('/api/parcelles', async (req, res) => {
 app.get('/api/parcelles/:id', async (req, res) => {
   const parcelle = await prisma.parcelle.findUnique({ where: { id: req.params.id } });
   res.json(parcelle);
+});
+
+app.post('/api/parcelles', async (req, res) => {
+  try {
+    const data = req.body;
+    console.log('📥 Données reçues pour parcelle:', JSON.stringify(data, null, 2));
+    
+    // Validation des champs obligatoires
+    if (!data.code) {
+      return res.status(400).json({ error: "Le champ 'code' est obligatoire" });
+    }
+    if (!data.id_producteur) {
+      return res.status(400).json({ error: "Le champ 'id_producteur' est obligatoire" });
+    }
+    
+    // Vérifier que le producteur existe
+    const producteur = await prisma.producteur.findUnique({
+      where: { id: data.id_producteur }
+    });
+    
+    if (!producteur) {
+      return res.status(404).json({ 
+        error: "Producteur introuvable",
+        id_producteur: data.id_producteur 
+      });
+    }
+    
+    const parcelleData = {
+      code: data.code,
+      id_producteur: data.id_producteur,
+      statut: data.statut || 'active',
+      
+      superficie_declaree: data.superficie_declaree ? parseFloat(data.superficie_declaree) : 0,
+      superficie_reelle: data.superficie_reelle ? parseFloat(data.superficie_reelle) : null,
+      age_plantation: data.age_plantation ? parseInt(data.age_plantation) : null,
+      variete_cacao: data.variete_cacao || null,
+      
+      // GPS
+      latitude: data.latitude ? parseFloat(data.latitude) : null,
+      longitude: data.longitude ? parseFloat(data.longitude) : null,
+      polygone_gps: data.polygone_gps || null,
+      superficie_gps: data.superficie_gps ? parseFloat(data.superficie_gps) : null,
+      perimetre: data.perimetre ? parseFloat(data.perimetre) : null,
+      
+      // Autres champs optionnels
+      annee_creation: data.annee_creation ? parseInt(data.annee_creation) : null,
+      mode_acquisition: data.mode_acquisition || null,
+      type_document: data.type_document || null,
+      densite_pieds_hectare: data.densite_pieds_hectare ? parseInt(data.densite_pieds_hectare) : null,
+      culture_intercalaire: data.culture_intercalaire || null,
+    };
+
+    console.log('💾 Création parcelle avec données:', JSON.stringify(parcelleData, null, 2));
+    const parcelle = await prisma.parcelle.create({ data: parcelleData });
+    console.log('✅ Parcelle créée avec succès:', parcelle.id);
+    res.json(parcelle);
+  } catch (error: any) {
+    console.error('❌ Erreur création parcelle:', error);
+    console.error('Stack:', error.stack);
+    console.error('Code erreur:', error.code);
+    
+    // Gestion des erreurs spécifiques Prisma
+    if (error.code === 'P2002') {
+      return res.status(409).json({ 
+        error: "Une parcelle avec ce code existe déjà",
+        field: error.meta?.target 
+      });
+    }
+    
+    if (error.code === 'P2003') {
+      return res.status(404).json({ 
+        error: "Référence invalide (producteur introuvable)",
+        field: error.meta?.field_name 
+      });
+    }
+    
+    res.status(500).json({ 
+      error: error.message || "Erreur création parcelle",
+      code: error.code,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
 });
 
 app.put('/api/parcelles/:id', async (req, res) => {
@@ -481,6 +947,41 @@ app.post('/api/operations', async (req, res) => {
   try {
     const data = req.body;
     console.log('📥 Données reçues:', JSON.stringify(data, null, 2));
+
+    // Support pour le format plat de l'application mobile
+    if (!data.identification && data.id_producteur && data.id_parcelle) {
+      console.log('📱 Détection format mobile');
+      
+      const flatData = {
+        id_producteur: data.id_producteur,
+        id_parcelle: data.id_parcelle,
+        id_village: data.id_village,
+        id_agent: data.id_agent || null,
+        statut: data.statut || "Brouillon",
+        campagne: data.campagne || "2023-2024",
+        
+        quantite_cabosses: data.quantite_cabosses,
+        poids_estimatif: data.poids_estimatif,
+        nb_sacs_brousse: data.nb_sacs_brousse || 0,
+        
+        signature_producteur: data.signature_producteur,
+        date_signature: data.date_signature ? new Date(data.date_signature) : null,
+      };
+
+      const operation = await prisma.operation.create({
+        data: flatData,
+        include: {
+          producteur: { select: { id: true, nom_complet: true } },
+          agent: { select: { id: true, nom: true, prenom: true, code: true } },
+          village: { select: { id: true, nom: true } },
+          parcelle: { select: { id: true, code: true } }
+        }
+      });
+
+      console.log('✅ Opération (Mobile) créée avec succès:', operation.id);
+      rt.operationCreated(operation);
+      return res.json(operation);
+    }
 
     // Vérification de la structure des données
     if (!data.identification || !data.identification.idProducteur || !data.identification.idPlantation) {
