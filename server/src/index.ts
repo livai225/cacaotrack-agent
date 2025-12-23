@@ -380,7 +380,7 @@ app.put('/api/organisations/:id', async (req, res) => {
     }
     
     // Gestion du champ secretaire_contact
-    let secretaire_contact: any[] | undefined = undefined;
+    let secretaire_contact: any[] | null | undefined = undefined;
     if (data.secretaire_contact !== undefined) {
       if (Array.isArray(data.secretaire_contact)) {
         secretaire_contact = data.secretaire_contact;
@@ -397,7 +397,7 @@ app.put('/api/organisations/:id', async (req, res) => {
     }
     
     // Gestion du champ dg_contact
-    let dg_contact: any[] | undefined = undefined;
+    let dg_contact: any[] | null | undefined = undefined;
     if (data.dg_contact !== undefined) {
       if (Array.isArray(data.dg_contact)) {
         dg_contact = data.dg_contact;
@@ -414,7 +414,7 @@ app.put('/api/organisations/:id', async (req, res) => {
     }
     
     // Gestion du champ tresorier_contact
-    let tresorier_contact: any[] | undefined = undefined;
+    let tresorier_contact: any[] | null | undefined = undefined;
     if (data.tresorier_contact !== undefined) {
       if (Array.isArray(data.tresorier_contact)) {
         tresorier_contact = data.tresorier_contact;
