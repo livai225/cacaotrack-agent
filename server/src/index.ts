@@ -550,7 +550,7 @@ app.post('/api/villages', async (req, res) => {
     const code = data.code || `VIL-${Date.now()}`;
     
     // Gestion du champ chef_contact
-    let chef_contact: any[] | null = null;
+    let chef_contact: any[] | undefined = undefined;
     if (data.chef_contact) {
       if (Array.isArray(data.chef_contact)) {
         chef_contact = data.chef_contact;
@@ -581,7 +581,7 @@ app.post('/api/villages', async (req, res) => {
       
       // Autorité
       chef_nom: data.chef_nom || null,
-      chef_contact: chef_contact,
+      ...(chef_contact !== undefined && { chef_contact }),
     };
 
     console.log('💾 Création village avec données:', JSON.stringify(villageData, null, 2));
