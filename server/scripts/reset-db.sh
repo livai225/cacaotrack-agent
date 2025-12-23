@@ -70,21 +70,30 @@ fi
 export PGPASSWORD=$DB_PASSWORD
 
 # 1. Supprimer la base de données existante (si elle existe)
+# Utiliser l'utilisateur postgres pour les opérations administratives
 print_info "Suppression de l'ancienne base de données..."
-psql -h $DB_HOST -U $DB_USER -p $DB_PORT -d postgres -c "DROP DATABASE IF EXISTS \"$DB_NAME\";" 2>&1 || true
+print_warning "Vous devrez entrer le mot de passe de l'utilisateur 'postgres'"
+sudo -u postgres psql -h $DB_HOST -p $DB_PORT -d postgres -c "DROP DATABASE IF EXISTS \"$DB_NAME\";" 2>&1 || true
 print_success "Ancienne base de données supprimée"
 
 # 2. Créer une nouvelle base de données
 print_info "Création de la nouvelle base de données..."
-psql -h $DB_HOST -U $DB_USER -p $DB_PORT -d postgres -c "CREATE DATABASE \"$DB_NAME\";" 2>&1
+sudo -u postgres psql -h $DB_HOST -p $DB_PORT -d postgres -c "CREATE DATABASE \"$DB_NAME\";" 2>&1
 print_success "Nouvelle base de données créée"
 
-# 3. Activer l'extension PostGIS
+# 3. Donner les permissions à asco_user
+print_info "Attribution des permissions à $DB_USER..."
+sudo -u postgres psql -h $DB_HOST -p $DB_PORT -d postgres -c "GRANT ALL PRIVILEGES ON DATABASE \"$DB_NAME\" TO \"$DB_USER\";" 2>&1
+sudo -u postgres psql -h $DB_HOST -p $DB_PORT -d $DB_NAME -c "GRANT ALL ON SCHEMA public TO \"$DB_USER\";" 2>&1
+print_success "Permissions accordées"
+
+# 4. Activer l'extension PostGIS
 print_info "Activation de l'extension PostGIS..."
+export PGPASSWORD=$DB_PASSWORD
 psql -h $DB_HOST -U $DB_USER -d $DB_NAME -p $DB_PORT -c "CREATE EXTENSION IF NOT EXISTS postgis;" 2>&1
 print_success "Extension PostGIS activée"
 
-# 4. Générer le client Prisma
+# 5. Générer le client Prisma
 print_info "Génération du client Prisma..."
 npm run db:generate
 if [ $? -eq 0 ]; then
@@ -95,7 +104,7 @@ else
     exit 1
 fi
 
-# 5. Appliquer le schéma Prisma
+# 6. Appliquer le schéma Prisma
 print_info "Application du schéma Prisma..."
 npm run db:push
 if [ $? -eq 0 ]; then
@@ -106,7 +115,7 @@ else
     exit 1
 fi
 
-# 6. Optionnel: Exécuter le seed
+# 7. Optionnel: Exécuter le seed
 read -p "Voulez-vous exécuter le script de seed pour créer des données de test ? (o/N): " seed_confirm
 if [ "$seed_confirm" = "o" ] || [ "$seed_confirm" = "O" ]; then
     print_info "Exécution du script de seed..."
