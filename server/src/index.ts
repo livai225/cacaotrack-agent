@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { createRealtimeEmitter } from './realtime';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
@@ -585,7 +585,9 @@ app.post('/api/villages', async (req, res) => {
     };
 
     console.log('💾 Création village avec données:', JSON.stringify(villageData, null, 2));
-    const village = await prisma.village.create({ data: villageData });
+    const village = await prisma.village.create({ 
+      data: villageData as Prisma.VillageUncheckedCreateInput 
+    });
     console.log('✅ Village créé avec succès:', village.id);
     res.json(village);
   } catch (error: any) {
