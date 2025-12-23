@@ -14,6 +14,18 @@ export const api = {
     if (!res.ok) throw new Error("Erreur chargement organisation");
     return res.json();
   },
+  createOrganisation: async (data: any): Promise<Organisation> => {
+    const res = await fetch(`${API_URL}/organisations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ error: "Erreur inconnue" }));
+      throw new Error(errorData.error || errorData.message || "Erreur création organisation");
+    }
+    return res.json();
+  },
   updateOrganisation: async (id: string, data: any): Promise<Organisation> => {
     const res = await fetch(`${API_URL}/organisations/${id}`, {
       method: "PUT",
@@ -37,6 +49,18 @@ export const api = {
   getSection: async (id: string): Promise<Section> => {
     const res = await fetch(`${API_URL}/sections/${id}`);
     if (!res.ok) throw new Error("Erreur chargement section");
+    return res.json();
+  },
+  createSection: async (data: any): Promise<Section> => {
+    const res = await fetch(`${API_URL}/sections`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ error: "Erreur inconnue" }));
+      throw new Error(errorData.error || errorData.message || "Erreur création section");
+    }
     return res.json();
   },
   updateSection: async (id: string, data: any): Promise<Section> => {
@@ -64,6 +88,18 @@ export const api = {
     if (!res.ok) throw new Error("Erreur chargement village");
     return res.json();
   },
+  createVillage: async (data: any): Promise<Village> => {
+    const res = await fetch(`${API_URL}/villages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ error: "Erreur inconnue" }));
+      throw new Error(errorData.error || errorData.message || "Erreur création village");
+    }
+    return res.json();
+  },
   updateVillage: async (id: string, data: any): Promise<Village> => {
     const res = await fetch(`${API_URL}/villages/${id}`, {
       method: "PUT",
@@ -89,6 +125,18 @@ export const api = {
     if (!res.ok) throw new Error("Erreur chargement producteur");
     return res.json();
   },
+  createProducteur: async (data: any): Promise<Producteur> => {
+    const res = await fetch(`${API_URL}/producteurs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ error: "Erreur inconnue" }));
+      throw new Error(errorData.error || errorData.message || "Erreur création producteur");
+    }
+    return res.json();
+  },
   updateProducteur: async (id: string, data: any): Promise<Producteur> => {
     const res = await fetch(`${API_URL}/producteurs/${id}`, {
       method: "PUT",
@@ -112,6 +160,18 @@ export const api = {
   getParcelle: async (id: string): Promise<Parcelle> => {
     const res = await fetch(`${API_URL}/parcelles/${id}`);
     if (!res.ok) throw new Error("Erreur chargement parcelle");
+    return res.json();
+  },
+  createParcelle: async (data: any): Promise<Parcelle> => {
+    const res = await fetch(`${API_URL}/parcelles`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ error: "Erreur inconnue" }));
+      throw new Error(errorData.error || errorData.message || "Erreur création parcelle");
+    }
     return res.json();
   },
   updateParcelle: async (id: string, data: any): Promise<Parcelle> => {

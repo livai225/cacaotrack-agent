@@ -97,14 +97,12 @@ export default function OrganisationForm() {
         await api.updateOrganisation(id, data);
         toast.success("Organisation modifiée avec succès");
       } else {
-        // Create new organisation - Note: Backend should handle this via POST
-        // For now using localStorage service as fallback
+        // Create new organisation
         const orgs = await api.getOrganisations();
         const nextNumber = orgs.length + 1;
         const code = generateOrganisationCode(nextNumber);
 
-        // TODO: Add createOrganisation POST method to API
-        await api.updateOrganisation("new", { ...data, code });
+        await api.createOrganisation({ ...data, code });
         toast.success(`Organisation ${code} créée avec succès`);
       }
 
