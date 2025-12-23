@@ -359,8 +359,25 @@ app.post('/api/organisations', async (req, res) => {
 
 app.put('/api/organisations/:id', async (req, res) => {
   try {
+    const { id } = req.params;
     const data = req.body;
+    console.log('📥 PUT /api/organisations/:id - ID:', id);
     console.log('📥 Données reçues pour mise à jour organisation:', JSON.stringify(data, null, 2));
+    
+    // Vérifier que l'organisation existe avant de la mettre à jour
+    const existingOrg = await prisma.organisation.findUnique({
+      where: { id }
+    });
+    
+    if (!existingOrg) {
+      console.error('❌ Organisation introuvable pour mise à jour:', id);
+      return res.status(404).json({ 
+        error: "Organisation introuvable",
+        id: id 
+      });
+    }
+    
+    console.log('✅ Organisation trouvée:', existingOrg.nom);
     
     // Gestion du champ president_contact (peut être string, array, ou déjà JSON)
     let president_contact: any[] | undefined = undefined;
@@ -449,7 +466,7 @@ app.put('/api/organisations/:id', async (req, res) => {
     
     console.log('💾 Mise à jour organisation avec données:', JSON.stringify(updateData, null, 2));
     const updated = await prisma.organisation.update({
-      where: { id: req.params.id },
+      where: { id },
       data: updateData
     });
     console.log('✅ Organisation mise à jour avec succès:', updated.id);
@@ -468,6 +485,7 @@ app.put('/api/organisations/:id', async (req, res) => {
     }
     
     if (error.code === 'P2025') {
+      console.error('❌ Erreur P2025 - Organisation introuvable:', req.params.id);
       return res.status(404).json({ 
         error: "Organisation introuvable",
         id: req.params.id 
