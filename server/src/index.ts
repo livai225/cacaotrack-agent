@@ -359,14 +359,126 @@ app.post('/api/organisations', async (req, res) => {
 
 app.put('/api/organisations/:id', async (req, res) => {
   try {
+    const data = req.body;
+    console.log('📥 Données reçues pour mise à jour organisation:', JSON.stringify(data, null, 2));
+    
+    // Gestion du champ president_contact (peut être string, array, ou déjà JSON)
+    let president_contact: any[] | undefined = undefined;
+    if (data.president_contact !== undefined) {
+      if (Array.isArray(data.president_contact)) {
+        president_contact = data.president_contact;
+      } else if (typeof data.president_contact === 'string') {
+        try {
+          const parsed = JSON.parse(data.president_contact);
+          president_contact = Array.isArray(parsed) ? parsed : [data.president_contact];
+        } catch {
+          president_contact = [data.president_contact];
+        }
+      } else if (data.president_contact === null) {
+        president_contact = [];
+      }
+    }
+    
+    // Gestion du champ secretaire_contact
+    let secretaire_contact: any[] | undefined = undefined;
+    if (data.secretaire_contact !== undefined) {
+      if (Array.isArray(data.secretaire_contact)) {
+        secretaire_contact = data.secretaire_contact;
+      } else if (typeof data.secretaire_contact === 'string') {
+        try {
+          const parsed = JSON.parse(data.secretaire_contact);
+          secretaire_contact = Array.isArray(parsed) ? parsed : [data.secretaire_contact];
+        } catch {
+          secretaire_contact = [data.secretaire_contact];
+        }
+      } else if (data.secretaire_contact === null) {
+        secretaire_contact = null;
+      }
+    }
+    
+    // Gestion du champ dg_contact
+    let dg_contact: any[] | undefined = undefined;
+    if (data.dg_contact !== undefined) {
+      if (Array.isArray(data.dg_contact)) {
+        dg_contact = data.dg_contact;
+      } else if (typeof data.dg_contact === 'string') {
+        try {
+          const parsed = JSON.parse(data.dg_contact);
+          dg_contact = Array.isArray(parsed) ? parsed : [data.dg_contact];
+        } catch {
+          dg_contact = [data.dg_contact];
+        }
+      } else if (data.dg_contact === null) {
+        dg_contact = null;
+      }
+    }
+    
+    // Gestion du champ tresorier_contact
+    let tresorier_contact: any[] | undefined = undefined;
+    if (data.tresorier_contact !== undefined) {
+      if (Array.isArray(data.tresorier_contact)) {
+        tresorier_contact = data.tresorier_contact;
+      } else if (typeof data.tresorier_contact === 'string') {
+        try {
+          const parsed = JSON.parse(data.tresorier_contact);
+          tresorier_contact = Array.isArray(parsed) ? parsed : [data.tresorier_contact];
+        } catch {
+          tresorier_contact = [data.tresorier_contact];
+        }
+      } else if (data.tresorier_contact === null) {
+        tresorier_contact = null;
+      }
+    }
+    
+    // Préparer les données avec gestion des champs JSON
+    const updateData: any = { ...data };
+    
+    // Remplacer les champs JSON transformés
+    if (president_contact !== undefined) {
+      updateData.president_contact = president_contact;
+    }
+    if (secretaire_contact !== undefined) {
+      updateData.secretaire_contact = secretaire_contact;
+    }
+    if (dg_contact !== undefined) {
+      updateData.dg_contact = dg_contact;
+    }
+    if (tresorier_contact !== undefined) {
+      updateData.tresorier_contact = tresorier_contact;
+    }
+    
+    console.log('💾 Mise à jour organisation avec données:', JSON.stringify(updateData, null, 2));
     const updated = await prisma.organisation.update({
       where: { id: req.params.id },
-      data: req.body
+      data: updateData
     });
+    console.log('✅ Organisation mise à jour avec succès:', updated.id);
     res.json(updated);
   } catch (error: any) {
-    console.error(error);
-    res.status(500).json({ error: error.message || "Erreur mise à jour organisation" });
+    console.error('❌ Erreur mise à jour organisation:', error);
+    console.error('Stack:', error.stack);
+    console.error('Code erreur:', error.code);
+    
+    // Gestion des erreurs spécifiques Prisma
+    if (error.code === 'P2002') {
+      return res.status(409).json({ 
+        error: "Une organisation avec ce code existe déjà",
+        field: error.meta?.target 
+      });
+    }
+    
+    if (error.code === 'P2025') {
+      return res.status(404).json({ 
+        error: "Organisation introuvable",
+        id: req.params.id 
+      });
+    }
+    
+    res.status(500).json({ 
+      error: error.message || "Erreur mise à jour organisation",
+      code: error.code,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
