@@ -274,17 +274,26 @@ app.post('/api/organisations', async (req, res) => {
     let president_contact: any[] = [];
     if (data.president_contact) {
       if (Array.isArray(data.president_contact)) {
-        president_contact = data.president_contact;
+        // Filtrer les valeurs vides
+        president_contact = data.president_contact.filter((phone: any) => phone && phone.trim && phone.trim() !== "");
       } else if (typeof data.president_contact === 'string') {
         try {
           // Essayer de parser si c'est une string JSON
           const parsed = JSON.parse(data.president_contact);
-          president_contact = Array.isArray(parsed) ? parsed : [data.president_contact];
+          const arr = Array.isArray(parsed) ? parsed : [data.president_contact];
+          president_contact = arr.filter((phone: any) => phone && phone.trim && phone.trim() !== "");
         } catch {
           // Sinon, traiter comme un string simple
-          president_contact = [data.president_contact];
+          if (data.president_contact.trim() !== "") {
+            president_contact = [data.president_contact];
+          }
         }
       }
+    }
+    
+    // Validation : au moins un contact est requis pour le président
+    if (president_contact.length === 0) {
+      return res.status(400).json({ error: "Au moins un numéro de téléphone du président est requis" });
     }
     
     // Gestion du champ secretaire_contact
@@ -298,6 +307,36 @@ app.post('/api/organisations', async (req, res) => {
           secretaire_contact = Array.isArray(parsed) ? parsed : [data.secretaire_contact];
         } catch {
           secretaire_contact = [data.secretaire_contact];
+        }
+      }
+    }
+    
+    // Gestion du champ dg_contact
+    let dg_contact: any[] | null = null;
+    if (data.dg_contact) {
+      if (Array.isArray(data.dg_contact)) {
+        dg_contact = data.dg_contact;
+      } else if (typeof data.dg_contact === 'string') {
+        try {
+          const parsed = JSON.parse(data.dg_contact);
+          dg_contact = Array.isArray(parsed) ? parsed : [data.dg_contact];
+        } catch {
+          dg_contact = [data.dg_contact];
+        }
+      }
+    }
+    
+    // Gestion du champ tresorier_contact
+    let tresorier_contact: any[] | null = null;
+    if (data.tresorier_contact) {
+      if (Array.isArray(data.tresorier_contact)) {
+        tresorier_contact = data.tresorier_contact;
+      } else if (typeof data.tresorier_contact === 'string') {
+        try {
+          const parsed = JSON.parse(data.tresorier_contact);
+          tresorier_contact = Array.isArray(parsed) ? parsed : [data.tresorier_contact];
+        } catch {
+          tresorier_contact = [data.tresorier_contact];
         }
       }
     }
@@ -327,9 +366,12 @@ app.post('/api/organisations', async (req, res) => {
       email: data.email || null,
       telephone: data.telephone || null,
       dg_nom: data.dg_nom || null,
-      dg_contact: data.dg_contact ? (Array.isArray(data.dg_contact) ? data.dg_contact : [data.dg_contact]) : null,
+      dg_contact: dg_contact && dg_contact.length > 0 ? dg_contact : null,
       tresorier_nom: data.tresorier_nom || null,
-      tresorier_contact: data.tresorier_contact ? (Array.isArray(data.tresorier_contact) ? data.tresorier_contact : [data.tresorier_contact]) : null,
+      tresorier_contact: tresorier_contact && tresorier_contact.length > 0 ? tresorier_contact : null,
+      
+      // Métriques (le champ photo n'existe pas dans le schéma Organisation, on l'ignore)
+      potentiel_production: data.potentiel_production ? parseFloat(data.potentiel_production) : 0,
     };
 
     console.log('💾 Création organisation avec données:', JSON.stringify(orgData, null, 2));
@@ -712,6 +754,40 @@ app.post('/api/villages', async (req, res) => {
       // Autorité
       chef_nom: data.chef_nom || null,
       ...(chef_contact !== undefined && { chef_contact }),
+      
+      // Infrastructures (booléens avec valeurs par défaut)
+      ecole_primaire: data.ecole_primaire || false,
+      college_lycee: data.college_lycee || false,
+      dispensaire: data.dispensaire || false,
+      maternite: data.maternite || false,
+      pharmacie: data.pharmacie || false,
+      eau_courante: data.eau_courante || false,
+      pompe_hydraulique: data.pompe_hydraulique || false,
+      puits: data.puits || false,
+      riviere_marigot: data.riviere_marigot || false,
+      electricite_reseau: data.electricite_reseau || false,
+      electricite_solaire: data.electricite_solaire || false,
+      marche: data.marche || false,
+      
+      // Cultures (booléens avec valeurs par défaut)
+      culture_cacao: data.culture_cacao !== undefined ? data.culture_cacao : true,
+      culture_cafe: data.culture_cafe || false,
+      culture_hevea: data.culture_hevea || false,
+      culture_palmier: data.culture_palmier || false,
+      culture_anacarde: data.culture_anacarde || false,
+      culture_coton: data.culture_coton || false,
+      culture_vivrier: data.culture_vivrier || false,
+      culture_riz: data.culture_riz || false,
+      culture_mais: data.culture_mais || false,
+      culture_igname: data.culture_igname || false,
+      culture_manioc: data.culture_manioc || false,
+      
+      // Finance (booléens avec valeurs par défaut)
+      om_orange: data.om_orange || false,
+      momo_mtn: data.momo_mtn || false,
+      flooz_moov: data.flooz_moov || false,
+      wave: data.wave || false,
+      microfinance: data.microfinance || false,
     };
 
     console.log('💾 Création village avec données:', JSON.stringify(villageData, null, 2));

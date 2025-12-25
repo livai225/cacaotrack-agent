@@ -92,9 +92,16 @@ export default function OrganisationForm() {
     try {
       setIsLoading(true);
 
+      // Filtrer les valeurs vides des arrays de contacts
+      const cleanData = {
+        ...data,
+        president_contact: data.president_contact.filter(phone => phone && phone.trim() !== ""),
+        secretaire_contact: data.secretaire_contact?.filter(phone => phone && phone.trim() !== "") || [],
+      };
+
       if (isEdit && id) {
         // Update existing organisation
-        await api.updateOrganisation(id, data);
+        await api.updateOrganisation(id, cleanData);
         toast.success("Organisation modifiée avec succès");
       } else {
         // Create new organisation
@@ -102,14 +109,15 @@ export default function OrganisationForm() {
         const nextNumber = orgs.length + 1;
         const code = generateOrganisationCode(nextNumber);
 
-        await api.createOrganisation({ ...data, code });
+        await api.createOrganisation({ ...cleanData, code });
         toast.success(`Organisation ${code} créée avec succès`);
       }
 
       navigate("/organisations");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erreur lors de la sauvegarde:", error);
-      toast.error(isEdit ? "Erreur lors de la modification" : "Erreur lors de la création");
+      const errorMessage = error?.message || (isEdit ? "Erreur lors de la modification" : "Erreur lors de la création");
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }

@@ -21,6 +21,7 @@ import { api } from "@/services/api";
 // Schéma de validation complet basé sur l'image fournie
 const villageSchema = z.object({
   // Informations Générales
+  id_section: z.string().min(1, "La section est obligatoire"),
   localite: z.string().min(1, "La localité est obligatoire"),
   nom: z.string().min(1, "Le nom du campement est obligatoire"),
   type: z.enum(["Village", "Campement"]),
@@ -125,6 +126,7 @@ export default function VillageForm() {
   const { id } = useParams();
   const isEdit = !!id;
   const [isLoading, setIsLoading] = useState(false);
+  const [sections, setSections] = useState<any[]>([]);
 
   const { register, handleSubmit, formState: { errors }, setValue, watch, reset } = useForm<VillageFormData>({
     resolver: zodResolver(villageSchema),
@@ -167,8 +169,17 @@ export default function VillageForm() {
     }
   });
 
-  // Load existing data when editing
+  // Load sections and existing data when editing
   useEffect(() => {
+    // Charger les sections
+    api.getSections()
+      .then(setSections)
+      .catch((error) => {
+        console.error("Error loading sections:", error);
+        toast.error("Erreur lors du chargement des sections");
+      });
+    
+    // Charger les données du village si en mode édition
     if (isEdit && id) {
       setIsLoading(true);
       api.getVillage(id)
@@ -187,19 +198,26 @@ export default function VillageForm() {
   const onSubmit = async (data: VillageFormData) => {
     setIsLoading(true);
     try {
+      // Filtrer les valeurs vides des arrays de contacts
+      const cleanData = {
+        ...data,
+        chef_contact: data.chef_contact?.filter(phone => phone && phone.trim() !== "") || [],
+      };
+
       if (isEdit && id) {
-        await api.updateVillage(id, data);
+        await api.updateVillage(id, cleanData);
         toast.success("Village mis à jour avec succès");
         navigate(`/villages/${id}`);
       } else {
         const code = generateVillageCode(Math.floor(Math.random() * 1000));
-        console.log("Village créé:", { code, ...data });
+        await api.createVillage({ ...cleanData, code });
         toast.success(`Village ${code} créé avec succès`);
         navigate("/villages");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving village:", error);
-      toast.error(isEdit ? "Erreur lors de la mise à jour" : "Erreur lors de la création du village");
+      const errorMessage = error?.message || (isEdit ? "Erreur lors de la mise à jour" : "Erreur lors de la création du village");
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -225,6 +243,20 @@ export default function VillageForm() {
             <CardTitle className="bg-primary/10 p-2 rounded text-primary">Informations Générales</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div>
+              <Label>Section *</Label>
+              <Select onValueChange={(val) => setValue("id_section", val)} value={watch("id_section")}>
+                <SelectTrigger><SelectValue placeholder="Sélectionner une section..." /></SelectTrigger>
+                <SelectContent>
+                  {sections.map((section) => (
+                    <SelectItem key={section.id} value={section.id}>
+                      {section.nom} ({section.code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.id_section && <p className="text-destructive text-sm">{errors.id_section.message}</p>}
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label>Localité *</Label>
