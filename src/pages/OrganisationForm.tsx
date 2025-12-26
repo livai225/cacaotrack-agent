@@ -1,7 +1,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,7 +44,9 @@ type OrganisationFormData = z.infer<typeof organisationSchema>;
 export default function OrganisationForm() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const isEdit = !!id;
+  const location = useLocation();
+  // Ne pas être en mode édition si on est sur /nouveau ou si l'id est "nouveau" ou "new"
+  const isEdit = !!id && id !== "nouveau" && id !== "new" && !location.pathname.includes("/nouveau");
   const [isLoading, setIsLoading] = useState(false);
 
   const [currentStep, setCurrentStep] = useState(1);
