@@ -45,8 +45,10 @@ export default function OrganisationForm() {
   const navigate = useNavigate();
   const { id } = useParams();
   const location = useLocation();
-  // Ne pas être en mode édition si on est sur /nouveau ou si l'id est "nouveau" ou "new"
-  const isEdit = !!id && id !== "nouveau" && id !== "new" && !location.pathname.includes("/nouveau");
+  // Détecter le mode édition : seulement si on est sur /edit ET qu'on a un ID valide (UUID)
+  // Ne pas être en mode édition si on est sur /nouveau
+  const isEditMode = location.pathname.includes("/edit") && !!id && id !== "nouveau" && id !== "new";
+  const isEdit = isEditMode;
   const [isLoading, setIsLoading] = useState(false);
 
   const [currentStep, setCurrentStep] = useState(1);
