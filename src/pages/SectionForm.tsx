@@ -1,4 +1,4 @@
-import { useForm } from "react-hook-form";
+﻿import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useNavigate, useParams } from "react-router-dom";
@@ -13,17 +13,21 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import PhotoCapture from "@/components/forms/PhotoCapture";
 import GPSCapture from "@/components/forms/GPSCapture";
 import MultiPhone from "@/components/forms/MultiPhone";
-import { ArrowLeft, Save, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Save, Loader2, Building2, Users, Wrench, ShoppingCart, Check } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { generateSectionCode } from "@/utils/codeGenerators";
 import { api } from "@/services/api";
+import { getAllLocalitesOptions } from "@/data/geographieCI";
+import { Combobox } from "@/components/ui/combobox";
 
-// Schéma de validation
+// SchÃ©ma de validation
 const sectionSchema = z.object({
   organisationId: z.string().min(1, "L'organisation est obligatoire"),
 
-  // Infos Générales
-  localite: z.string().min(1, "La localité est obligatoire"),
+  // Infos GÃ©nÃ©rales
+  localite: z.string().min(1, "La localitÃ© est obligatoire"),
   latitude: z.number().optional(),
   longitude: z.number().optional(),
   photo_magasin: z.string().optional(),
@@ -31,19 +35,19 @@ const sectionSchema = z.object({
   photo_aire_sechage: z.string().optional(),
   date_creation_section: z.string().optional(), // Date input returns string
   nom: z.string().min(1, "Le nom est obligatoire"),
-  telephone: z.string().optional(), // Single phone field per image? Image says "Numéro de téléphone de la section"
+  telephone: z.string().optional(), // Single phone field per image? Image says "NumÃ©ro de tÃ©lÃ©phone de la section"
   nb_producteurs: z.number().min(0),
   tonnage_c_precedente: z.number().min(0),
   tonnage_c_cours: z.number().min(0),
   tonnage_potentiel: z.number().min(0),
 
   // Dirigeants
-  president_nom: z.string().min(1, "Nom du président obligatoire"),
+  president_nom: z.string().min(1, "Nom du prÃ©sident obligatoire"),
   president_date_naissance: z.string().optional(),
   president_photo: z.string().optional(),
   president_contact: z.array(z.string()).min(1, "Contact obligatoire"),
 
-  secretaire_nom: z.string().min(1, "Nom du secrétaire obligatoire"),
+  secretaire_nom: z.string().min(1, "Nom du secrÃ©taire obligatoire"),
   secretaire_date_naissance: z.string().optional(),
   secretaire_photo: z.string().optional(),
   secretaire_contact: z.array(z.string()).min(1, "Contact obligatoire"),
@@ -65,7 +69,7 @@ const sectionSchema = z.object({
   analyseur_photo: z.string().optional(),
   analyseur_contact: z.array(z.string()).optional(),
 
-  // Equipements - Véhicules
+  // Equipements - VÃ©hicules
   vehicule_camionnette_nombre: z.number().min(0),
   vehicule_camionnette_etat: z.enum(["Bon", "Moyen", "Mauvais"]).optional(),
   vehicule_camionnette_statut: z.enum(["En marche", "En panne"]).optional(),
@@ -86,7 +90,7 @@ const sectionSchema = z.object({
   vehicule_moto_statut: z.enum(["En marche", "En panne"]).optional(),
   vehicule_moto_proprietaire: z.boolean(),
 
-  // Matériel
+  // MatÃ©riel
   materiel_dickey_john: z.boolean(),
   materiel_dickey_john_photo: z.string().optional(),
   materiel_kpm: z.boolean(),
@@ -132,13 +136,23 @@ const sectionSchema = z.object({
 
 type SectionFormData = z.infer<typeof sectionSchema>;
 
+const steps = [
+  { id: 1, name: "Informations Générales", icon: Building2 },
+  { id: 2, name: "Dirigeants", icon: Users },
+  { id: 3, name: "Personnel", icon: Users },
+  { id: 4, name: "Équipements", icon: Wrench },
+  { id: 5, name: "Commercialisation", icon: ShoppingCart },
+];
+
 export default function SectionForm() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEdit = !!id;
+  const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [organisations, setOrganisations] = useState<any[]>([]);
 
-  const { register, handleSubmit, formState: { errors }, setValue, watch, reset } = useForm<SectionFormData>({
+  const { register, handleSubmit, formState: { errors }, setValue, watch, reset, trigger } = useForm<SectionFormData>({
     resolver: zodResolver(sectionSchema),
     defaultValues: {
       nb_producteurs: 0,
@@ -171,6 +185,15 @@ export default function SectionForm() {
       comm_autre_acheteur: false,
     }
   });
+
+  // Load organisations
+  useEffect(() => {
+    api.getOrganisations()
+      .then(setOrganisations)
+      .catch((error) => {
+        console.error("Error loading organisations:", error);
+      });
+  }, []);
 
   // Load existing data when editing
   useEffect(() => {
@@ -277,33 +300,76 @@ export default function SectionForm() {
     }
   }, [id, isEdit, reset, navigate]);
 
+  const handleNext = async () => {
+    let fieldsToValidate: (keyof SectionFormData)[] = [];
+    
+    switch (currentStep) {
+      case 1:
+        fieldsToValidate = ["organisationId", "nom", "localite"];
+        break;
+      case 2:
+        fieldsToValidate = ["president_nom", "president_contact", "secretaire_nom", "secretaire_contact"];
+        break;
+      case 3:
+        fieldsToValidate = ["magasinier_nom", "peseur_nom"];
+        break;
+      case 4:
+        // Pas de validation obligatoire pour les Ã©quipements
+        break;
+      case 5:
+        // Pas de validation obligatoire pour la commercialisation
+        break;
+    }
+
+    if (fieldsToValidate.length > 0) {
+      const isValid = await trigger(fieldsToValidate);
+      if (!isValid) {
+        toast.error("Veuillez remplir tous les champs obligatoires");
+        return;
+      }
+    }
+
+    if (currentStep < steps.length) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
   const onSubmit = async (data: SectionFormData) => {
     setIsLoading(true);
     try {
       if (isEdit && id) {
         await api.updateSection(id, data);
-        toast.success("Section mise à jour avec succès");
+        toast.success("Section mise Ã  jour avec succÃ¨s");
         navigate(`/sections/${id}`);
       } else {
         const code = generateSectionCode(Math.floor(Math.random() * 100));
-        console.log("Section créée:", { code, ...data });
-        toast.success(`Section ${code} enregistrée avec succès`);
+        await api.createSection({ ...data, code });
+        toast.success(`Section ${code} enregistrÃ©e avec succÃ¨s`);
         navigate("/sections");
       }
     } catch (error) {
       console.error("Error saving section:", error);
-      toast.error(isEdit ? "Erreur lors de la mise à jour" : "Erreur lors de l'enregistrement");
+      toast.error(isEdit ? "Erreur lors de la mise Ã  jour" : "Erreur lors de l'enregistrement");
     } finally {
       setIsLoading(false);
     }
   };
+
+  const progress = (currentStep / steps.length) * 100;
+  const CurrentStepIcon = steps[currentStep - 1].icon;
 
   const renderPersonneFields = (prefix: string, title: string) => (
     <div className="border p-4 rounded-lg space-y-4">
       <h3 className="font-semibold text-lg text-primary">{title}</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <Label>Nom et Prénom *</Label>
+          <Label>Nom et PrÃ©nom *</Label>
           <Input {...register(`${prefix}_nom` as any)} placeholder="Nom complet" />
           {errors[prefix + "_nom" as keyof SectionFormData] && <p className="text-destructive text-sm">Requis</p>}
         </div>
@@ -313,7 +379,7 @@ export default function SectionForm() {
         </div>
         <div className="md:col-span-2">
           <MultiPhone
-            label="Contact téléphonique"
+            label="Contact tÃ©lÃ©phonique"
             values={watch(`${prefix}_contact` as any) || [""]}
             onChange={(vals) => setValue(`${prefix}_contact` as any, vals)}
           />
@@ -343,16 +409,16 @@ export default function SectionForm() {
               checked={watch(`${prefix}_proprietaire` as any)}
               onCheckedChange={(chk) => setValue(`${prefix}_proprietaire` as any, !!chk)}
             />
-            <Label>Propriétaire</Label>
+            <Label>PropriÃ©taire</Label>
           </div>
         </div>
       </div>
       {watch(`${prefix}_nombre` as any) > 0 && (
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <Label>État</Label>
+            <Label>Ã‰tat</Label>
             <Select onValueChange={(val) => setValue(`${prefix}_etat` as any, val)}>
-              <SelectTrigger><SelectValue placeholder="État" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Ã‰tat" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="Bon">Bon</SelectItem>
                 <SelectItem value="Moyen">Moyen</SelectItem>
@@ -386,13 +452,13 @@ export default function SectionForm() {
         <div className="space-y-3 pl-6 border-l-2 border-primary/20">
           {hasNameField && (
             <div>
-              <Label>Noms (séparés par virgule)</Label>
+              <Label>Noms (sÃ©parÃ©s par virgule)</Label>
               <Input {...register(`${prefix}_noms` as any)} />
             </div>
           )}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>% Quantité concernée</Label>
+              <Label>% QuantitÃ© concernÃ©e</Label>
               <Input type="number" {...register(`${prefix}_pct` as any, { valueAsNumber: true })} />
             </div>
             <div>
@@ -404,7 +470,7 @@ export default function SectionForm() {
               <Input type="number" {...register(`${prefix}_prix_campagne` as any, { valueAsNumber: true })} />
             </div>
             <div>
-              <Label>Prix Intermédiaire (FCFA)</Label>
+              <Label>Prix IntermÃ©diaire (FCFA)</Label>
               <Input type="number" {...register(`${prefix}_prix_intermediaire` as any, { valueAsNumber: true })} />
             </div>
           </div>
@@ -413,33 +479,19 @@ export default function SectionForm() {
     </div>
   );
 
-  return (
-    <div className="p-6 space-y-6 max-w-5xl mx-auto">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/sections")}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">{isEdit ? "Modifier Section" : "Nouvelle Section"}</h1>
-          <p className="text-muted-foreground">Saisie détaillée des informations de la section</p>
-        </div>
-      </div>
-
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-
-        {/* 1. Informations Générales */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="bg-primary/10 p-2 rounded text-primary">Informations Générales</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <div className="space-y-4">
             <div>
               <Label>Organisation Parente *</Label>
-              <Select onValueChange={(val) => setValue("organisationId", val)}>
-                <SelectTrigger><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
+              <Select onValueChange={(val) => setValue("organisationId", val)} value={watch("organisationId")}>
+                <SelectTrigger><SelectValue placeholder="SÃ©lectionner..." /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ORG-001">SCOOP-CA Divo</SelectItem>
-                  <SelectItem value="ORG-002">Union Gagnoa</SelectItem>
+                  {organisations.map((org) => (
+                    <SelectItem key={org.id} value={org.id}>{org.nom}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               {errors.organisationId && <p className="text-destructive text-sm">Requis</p>}
@@ -452,22 +504,29 @@ export default function SectionForm() {
                 {errors.nom && <p className="text-destructive text-sm">Requis</p>}
               </div>
               <div>
-                <Label>Localité *</Label>
-                <Input {...register("localite")} />
+                <Label>LocalitÃ© *</Label>
+                <Combobox
+                  options={getAllLocalitesOptions()}
+                  value={watch("localite")}
+                  onValueChange={(val) => setValue("localite", val)}
+                  placeholder="SÃ©lectionner une localitÃ©..."
+                  searchPlaceholder="Rechercher une localitÃ©..."
+                  emptyMessage="Aucune localitÃ© trouvÃ©e."
+                />
                 {errors.localite && <p className="text-destructive text-sm">Requis</p>}
               </div>
               <div>
-                <Label>Date de création</Label>
+                <Label>Date de crÃ©ation</Label>
                 <Input type="date" {...register("date_creation_section")} />
               </div>
               <div>
-                <Label>Téléphone Section</Label>
+                <Label>TÃ©lÃ©phone Section</Label>
                 <Input type="tel" {...register("telephone")} />
               </div>
             </div>
 
             <div className="border-t pt-4">
-              <Label className="mb-2 block font-semibold">Coordonnées GPS</Label>
+              <Label className="mb-2 block font-semibold">CoordonnÃ©es GPS</Label>
               <GPSCapture
                 onChange={(c) => { setValue("latitude", c.latitude); setValue("longitude", c.longitude); }}
                 latitude={watch("latitude")}
@@ -478,19 +537,19 @@ export default function SectionForm() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <PhotoCapture label="Photo Magasin" value={watch("photo_magasin")} onChange={(v) => setValue("photo_magasin", v)} />
               <div>
-                <Label>Surface Magasin (m²)</Label>
+                <Label>Surface Magasin (mÂ²)</Label>
                 <Input type="number" {...register("surface_magasin", { valueAsNumber: true })} />
               </div>
-              <PhotoCapture label="Photo Aire de séchage" value={watch("photo_aire_sechage")} onChange={(v) => setValue("photo_aire_sechage", v)} />
+              <PhotoCapture label="Photo Aire de sÃ©chage" value={watch("photo_aire_sechage")} onChange={(v) => setValue("photo_aire_sechage", v)} />
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-muted/30 p-4 rounded">
               <div>
-                <Label>Producteurs déclarés</Label>
+                <Label>Producteurs dÃ©clarÃ©s</Label>
                 <Input type="number" {...register("nb_producteurs", { valueAsNumber: true })} />
               </div>
               <div>
-                <Label>Tonnage Précédent</Label>
+                <Label>Tonnage PrÃ©cÃ©dent</Label>
                 <Input type="number" {...register("tonnage_c_precedente", { valueAsNumber: true })} />
               </div>
               <div>
@@ -502,29 +561,20 @@ export default function SectionForm() {
                 <Input type="number" {...register("tonnage_potentiel", { valueAsNumber: true })} />
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* 2. Dirigeants */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="bg-primary/10 p-2 rounded text-primary">Dirigeants</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {renderPersonneFields("president", "Président ou Délégué")}
-            {renderPersonneFields("secretaire", "Secrétaire")}
-          </CardContent>
-        </Card>
-
-        {/* 3. Personnel */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="bg-primary/10 p-2 rounded text-primary">Personnel</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
+          </div>
+        );
+      case 2:
+        return (
+          <div className="space-y-6">
+            {renderPersonneFields("president", "PrÃ©sident ou DÃ©lÃ©guÃ©")}
+            {renderPersonneFields("secretaire", "SecrÃ©taire")}
+          </div>
+        );
+      case 3:
+        return (
+          <div className="space-y-6">
             {renderPersonneFields("magasinier", "Magasinier")}
             {renderPersonneFields("peseur", "Peseur")}
-
             <div className="border p-4 rounded-lg space-y-4">
               <div className="flex items-center gap-2">
                 <Checkbox checked={watch("has_analyseur")} onCheckedChange={(chk) => setValue("has_analyseur", !!chk)} />
@@ -534,7 +584,7 @@ export default function SectionForm() {
                 <div className="space-y-4 pl-4 border-l-2 border-primary/20">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label>Nom et Prénom</Label>
+                      <Label>Nom et PrÃ©nom</Label>
                       <Input {...register("analyseur_nom")} />
                     </div>
                     <div>
@@ -559,27 +609,22 @@ export default function SectionForm() {
                 </div>
               )}
             </div>
-          </CardContent>
-        </Card>
-
-        {/* 4. Equipements */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="bg-primary/10 p-2 rounded text-primary">Equipements</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
+          </div>
+        );
+      case 4:
+        return (
+          <div className="space-y-6">
             <div>
-              <h3 className="font-semibold mb-4">Véhicules</h3>
+              <h3 className="font-semibold mb-4">VÃ©hicules</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {renderVehiculeFields("vehicule_camionnette", "Camionnettes")}
-                {renderVehiculeFields("vehicule_liaison", "Véhicules de liaison")}
+                {renderVehiculeFields("vehicule_liaison", "VÃ©hicules de liaison")}
                 {renderVehiculeFields("vehicule_tricycle", "Tricycles")}
                 {renderVehiculeFields("vehicule_moto", "Motos")}
               </div>
             </div>
-
             <div className="border-t pt-4">
-              <h3 className="font-semibold mb-4">Matériel de pesage et contrôle qualité</h3>
+              <h3 className="font-semibold mb-4">MatÃ©riel de pesage et contrÃ´le qualitÃ©</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[
                   { id: "materiel_dickey_john", label: "Dickey John" },
@@ -598,8 +643,6 @@ export default function SectionForm() {
                     )}
                   </div>
                 ))}
-
-                {/* Bascule Spécifique */}
                 <div className="border p-3 rounded space-y-2">
                   <div className="flex items-center gap-2">
                     <Checkbox checked={watch("materiel_bascule")} onCheckedChange={(chk) => setValue("materiel_bascule", !!chk)} />
@@ -607,37 +650,94 @@ export default function SectionForm() {
                   </div>
                   {watch("materiel_bascule") && (
                     <div className="space-y-2">
-                      <Input type="number" placeholder="Capacité (kg)" {...register("materiel_bascule_capacite", { valueAsNumber: true })} />
+                      <Input type="number" placeholder="CapacitÃ© (kg)" {...register("materiel_bascule_capacite", { valueAsNumber: true })} />
                       <PhotoCapture label="Photo Bascule" value={watch("materiel_bascule_photo")} onChange={(v) => setValue("materiel_bascule_photo", v)} />
                     </div>
                   )}
                 </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        );
+      case 5:
+        return (
+          <div className="space-y-4">
+            {renderCommFields("comm_coop", "Produits issus de la CoopÃ©rative")}
+            {renderCommFields("comm_pisteur", "Produits issus des Pisteurs", true)}
+            {renderCommFields("comm_autre_coop", "Produits issus des autres CoopÃ©ratives", true)}
+            {renderCommFields("comm_autre_acheteur", "Produits issus des autres acheteurs", true)}
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
 
-        {/* 5. Commercialisation */}
+  return (
+    <div className="p-6 space-y-6 max-w-5xl mx-auto">
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="icon" onClick={() => navigate("/sections")}>
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <div className="flex-1">
+          <h1 className="text-3xl font-bold text-foreground">{isEdit ? "Modifier Section" : "Nouvelle Section"}</h1>
+          <p className="text-muted-foreground">Saisie dÃ©taillÃ©e des informations de la section</p>
+        </div>
+      </div>
+
+      {/* Barre de progression */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">Ã‰tape {currentStep} sur {steps.length}</span>
+          <span className="font-medium">{steps[currentStep - 1].name}</span>
+        </div>
+        <Progress value={progress} className="h-2" />
+      </div>
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+
+        {/* Contenu de l'Ã©tape actuelle */}
         <Card>
           <CardHeader>
-            <CardTitle className="bg-primary/10 p-2 rounded text-primary">Commercialisation Production</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <CurrentStepIcon className="h-5 w-5" />
+              {steps[currentStep - 1].name}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {renderCommFields("comm_coop", "Produits issus de la Coopérative")}
-            {renderCommFields("comm_pisteur", "Produits issus des Pisteurs", true)}
-            {renderCommFields("comm_autre_coop", "Produits issus des autres Coopératives", true)}
-            {renderCommFields("comm_autre_acheteur", "Produits issus des autres acheteurs", true)}
+            {renderStepContent()}
           </CardContent>
         </Card>
 
-        <div className="flex gap-4 justify-end pt-4">
-          <Button type="button" variant="outline" size="lg" onClick={() => navigate("/sections")}>
-            Annuler
+        {/* Navigation */}
+        <div className="flex justify-between gap-4 pt-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handlePrevious}
+            disabled={currentStep === 1}
+            className="gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            PrÃ©cÃ©dent
           </Button>
-          <Button type="submit" size="lg" className="gap-2 bg-primary hover:bg-primary/90" disabled={isLoading}>
-            {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
-            {isEdit ? "Mettre à jour" : "Enregistrer la Section"}
-          </Button>
+          
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" onClick={() => navigate("/sections")}>
+              Annuler
+            </Button>
+            {currentStep < steps.length ? (
+              <Button type="button" onClick={handleNext} className="gap-2">
+                Suivant
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Button type="submit" className="gap-2 bg-primary hover:bg-primary/90" disabled={isLoading}>
+                {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+                {isEdit ? "Mettre Ã  jour" : "Enregistrer la Section"}
+              </Button>
+            )}
+          </div>
         </div>
       </form>
     </div>
