@@ -55,11 +55,17 @@ export default function OrganisationForm() {
     includesEdit: location.pathname.includes("/edit")
   });
   
-  // Détecter le mode édition : SEULEMENT si le chemin contient "/edit"
-  // Si le chemin contient "/nouveau", c'est forcément la création
-  const isEdit = location.pathname.includes("/edit") && !!id && id !== "nouveau" && id !== "new";
+  // Détecter le mode édition : 
+  // - Si le chemin contient "/nouveau" → FORCÉMENT création (isEdit = false)
+  // - Si le chemin contient "/edit" ET qu'on a un ID valide → édition (isEdit = true)
+  // - Sinon → création (isEdit = false)
+  const isEdit = !location.pathname.includes("/nouveau") && 
+                 location.pathname.includes("/edit") && 
+                 !!id && 
+                 id !== "nouveau" && 
+                 id !== "new";
   
-  console.log("🔍 isEdit déterminé:", isEdit);
+  console.log("🔍 isEdit déterminé:", isEdit, "| pathname:", location.pathname, "| id:", id);
   const [isLoading, setIsLoading] = useState(false);
 
   const [currentStep, setCurrentStep] = useState(1);
