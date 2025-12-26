@@ -8,10 +8,12 @@ import {
   Platform,
 } from 'react-native';
 import { TextInput, Button, Title, Card } from 'react-native-paper';
+import { localStorageService } from '../services/local-storage.service';
 import { apiService } from '../services/api.service';
 import { useSync } from '../contexts/SyncContext';
 
 export default function OrganisationScreen({ navigation, route }: any) {
+  // Hook de synchronisation
   const { isOnline, savePending } = useSync();
   const [loading, setLoading] = useState(false);
   

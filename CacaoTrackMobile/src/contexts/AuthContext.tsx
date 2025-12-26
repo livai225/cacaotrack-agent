@@ -28,25 +28,13 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-// Agent fictif pour bypasser la connexion (temporaire)
-const MOCK_AGENT: Agent = {
-  id: 'mock-agent-001',
-  code: 'AGT001',
-  nom: 'Agent',
-  prenom: 'Test',
-  email: 'agent@test.com',
-  telephone: '+225 00 00 00 00',
-};
-
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  // Bypass login: agent toujours connecté avec un agent fictif
-  const [agent, setAgent] = useState<Agent | null>(MOCK_AGENT);
-  const [isLoading, setIsLoading] = useState(false);
+  const [agent, setAgent] = useState<Agent | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Désactivé temporairement - on va directement au dashboard
-  // useEffect(() => {
-  //   loadStoredAuth();
-  // }, []);
+  useEffect(() => {
+    loadStoredAuth();
+  }, []);
 
   const loadStoredAuth = async () => {
     try {

@@ -1,8 +1,13 @@
-# 📚 Index de la Documentation - Module Agent
+# 📚 Index de la Documentation - CacaoTrack
 
 ## 🎯 Démarrage rapide
 
-Pour commencer rapidement avec le module Agent :
+### Pour découvrir le projet complet :
+1. Lire [`ETAT_COMPLET_PROJET.md`](./ETAT_COMPLET_PROJET.md) - Vue d'ensemble complète
+2. Consulter [`RECAPITULATIF_COMPLET.md`](./RECAPITULATIF_COMPLET.md) - Résumé des fonctionnalités
+3. Voir [`APPLICATION_MOBILE_ETAT.md`](./APPLICATION_MOBILE_ETAT.md) - État de l'app mobile
+
+### Pour le module Agent :
 1. Lire [`README_REGIONS.md`](./README_REGIONS.md) - Guide de démarrage
 2. Consulter [`AVANT_APRES.md`](./AVANT_APRES.md) - Voir les améliorations
 3. Ouvrir `test-api.html` dans un navigateur pour tester
@@ -10,6 +15,14 @@ Pour commencer rapidement avec le module Agent :
 ---
 
 ## 📖 Documentation complète
+
+### 🌟 Documents Principaux
+
+| Fichier | Description | Pour qui ? |
+|---------|-------------|------------|
+| [`ETAT_COMPLET_PROJET.md`](./ETAT_COMPLET_PROJET.md) | État complet du projet (Web + Mobile + API) | Tous |
+| [`RECAPITULATIF_COMPLET.md`](./RECAPITULATIF_COMPLET.md) | Résumé session 24 Nov 2024 | Tous |
+| [`APPLICATION_MOBILE_ETAT.md`](./APPLICATION_MOBILE_ETAT.md) | État complet app mobile | Développeurs Mobile |
 
 ### 🚀 Guides d'utilisation
 

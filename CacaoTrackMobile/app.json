@@ -40,6 +40,14 @@
           "photosPermission": "CacaoTrack a besoin d'accéder à vos photos pour prendre des photos des producteurs.",
           "cameraPermission": "CacaoTrack a besoin d'accéder à votre caméra pour prendre des photos des producteurs."
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
       ]
     ],
     "extra": {

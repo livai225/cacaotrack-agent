@@ -1,8 +1,11 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Card, Title, Text, Button, Divider } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Alert, Text, TouchableOpacity } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useSync } from '../contexts/SyncContext';
+import { colors } from '../theme/colors';
+import { spacing, borderRadius, shadows } from '../theme/spacing';
+import Card from '../components/Card';
+import Button from '../components/Button';
 
 export default function HomeScreen({ navigation }: any) {
   const { agent, logout } = useAuth();
@@ -19,114 +22,132 @@ export default function HomeScreen({ navigation }: any) {
     );
   };
 
-  return (
-    <ScrollView style={styles.container}>
-      {/* Carte Agent */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <Title style={styles.welcome}>
-            Bonjour, {agent?.prenom} {agent?.nom}
-          </Title>
-          <Text style={styles.info}>Code: {agent?.code}</Text>
-          <Text style={styles.info}>Téléphone: {agent?.telephone}</Text>
-        </Card.Content>
-      </Card>
+  const actionButtons = [
+    {
+      id: 'organisation',
+      title: 'Créer une Organisation',
+      icon: '🏢',
+      color: colors.primary,
+      onPress: () => navigation.navigate('Organisation'),
+    },
+    {
+      id: 'section',
+      title: 'Créer une Section',
+      icon: '📍',
+      color: colors.primary,
+      onPress: () => navigation.navigate('Section'),
+    },
+    {
+      id: 'village',
+      title: 'Enregistrer un Village',
+      icon: '🏘️',
+      color: colors.primary,
+      onPress: () => navigation.navigate('Village'),
+    },
+    {
+      id: 'producteur',
+      title: 'Enregistrer un Producteur',
+      icon: '👤',
+      color: colors.primary,
+      onPress: () => navigation.navigate('Producteur'),
+    },
+    {
+      id: 'parcelle',
+      title: 'Créer une Parcelle',
+      icon: '🗺️',
+      color: colors.primary,
+      onPress: () => navigation.navigate('Parcelle'),
+    },
+    {
+      id: 'collecte',
+      title: 'Nouvelle Collecte',
+      icon: '📦',
+      color: colors.secondary,
+      onPress: () => navigation.navigate('Collecte'),
+    },
+  ];
 
-      {/* Carte Synchronisation */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <Title>Synchronisation</Title>
-          <View style={styles.syncRow}>
-            <Text style={styles.syncLabel}>Statut:</Text>
-            <Text style={[styles.syncValue, isOnline ? styles.online : styles.offline]}>
-              {isOnline ? '🟢 En ligne' : '🔴 Hors ligne'}
+  return (
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      {/* Header avec infos agent */}
+      <View style={styles.header}>
+        <View style={styles.avatarContainer}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {agent?.prenom?.[0]?.toUpperCase() || 'A'}
             </Text>
           </View>
-          <View style={styles.syncRow}>
-            <Text style={styles.syncLabel}>En attente:</Text>
-            <Text style={styles.syncValue}>{pendingCount} élément(s)</Text>
+        </View>
+        <View style={styles.agentInfo}>
+          <Text style={styles.welcome}>Bonjour,</Text>
+          <Text style={styles.agentName}>
+            {agent?.prenom} {agent?.nom}
+          </Text>
+          <Text style={styles.agentCode}>Code: {agent?.code}</Text>
+        </View>
+      </View>
+
+      {/* Carte Synchronisation */}
+      <Card variant="elevated" style={styles.syncCard}>
+        <View style={styles.syncHeader}>
+          <Text style={styles.syncTitle}>Synchronisation</Text>
+          <View style={[styles.statusBadge, isOnline ? styles.statusOnline : styles.statusOffline]}>
+            <View style={[styles.statusDot, isOnline ? styles.statusDotOnline : styles.statusDotOffline]} />
+            <Text style={[styles.statusText, isOnline ? styles.statusTextOnline : styles.statusTextOffline]}>
+              {isOnline ? 'En ligne' : 'Hors ligne'}
+            </Text>
           </View>
-          {pendingCount > 0 && (
-            <Button
-              mode="contained"
-              onPress={syncData}
-              loading={isSyncing}
-              disabled={!isOnline || isSyncing}
-              style={styles.syncButton}
+        </View>
+        
+        <View style={styles.syncInfo}>
+          <View style={styles.syncInfoRow}>
+            <Text style={styles.syncLabel}>Éléments en attente:</Text>
+            <View style={[styles.pendingBadge, pendingCount > 0 && styles.pendingBadgeActive]}>
+              <Text style={styles.pendingCount}>{pendingCount}</Text>
+            </View>
+          </View>
+        </View>
+
+        {pendingCount > 0 && (
+          <Button
+            title={isSyncing ? 'Synchronisation...' : 'Synchroniser maintenant'}
+            onPress={syncData}
+            loading={isSyncing}
+            disabled={!isOnline || isSyncing}
+            variant="primary"
+            size="md"
+            style={styles.syncButton}
+          />
+        )}
+      </Card>
+
+      {/* Actions Rapides */}
+      <View style={styles.actionsSection}>
+        <Text style={styles.sectionTitle}>Actions Rapides</Text>
+        <View style={styles.actionsGrid}>
+          {actionButtons.map((action) => (
+            <TouchableOpacity
+              key={action.id}
+              style={[styles.actionCard, { borderLeftColor: action.color }]}
+              onPress={action.onPress}
+              activeOpacity={0.7}
             >
-              {isSyncing ? 'Synchronisation...' : 'Synchroniser maintenant'}
-            </Button>
-          )}
-        </Card.Content>
-      </Card>
-
-      {/* Menu Actions */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <Title>Actions Rapides</Title>
-          <Divider style={styles.divider} />
-          
-          <Button
-            mode="contained"
-            icon="domain"
-            onPress={() => navigation.navigate('Organisation')}
-            style={styles.actionButton}
-            buttonColor="#8B4513"
-          >
-            Créer une Organisation
-          </Button>
-
-          <Button
-            mode="contained"
-            icon="map-marker"
-            onPress={() => navigation.navigate('Village')}
-            style={styles.actionButton}
-            buttonColor="#8B4513"
-          >
-            Enregistrer un Village
-          </Button>
-
-          <Button
-            mode="contained"
-            icon="account"
-            onPress={() => navigation.navigate('Producteur')}
-            style={styles.actionButton}
-            buttonColor="#8B4513"
-          >
-            Enregistrer un Producteur
-          </Button>
-
-          <Button
-            mode="contained"
-            icon="map"
-            onPress={() => navigation.navigate('Parcelle')}
-            style={styles.actionButton}
-            buttonColor="#8B4513"
-          >
-            Créer une Parcelle
-          </Button>
-
-          <Button
-            mode="contained"
-            icon="package-variant"
-            onPress={() => navigation.navigate('Collecte')}
-            style={styles.actionButton}
-            buttonColor="#D2691E"
-          >
-            Nouvelle Collecte
-          </Button>
-        </Card.Content>
-      </Card>
+              <Text style={styles.actionIcon}>{action.icon}</Text>
+              <Text style={styles.actionTitle}>{action.title}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
 
       {/* Déconnexion */}
       <Button
-        mode="outlined"
+        title="Déconnexion"
         onPress={handleLogout}
-        style={styles.logoutButton}
-        textColor="#D32F2F"
-      >
-        Déconnexion
-      </Button>
+        variant="outline"
+        size="md"
+        style={[styles.logoutButton, { borderColor: colors.error }]}
+        textStyle={{ color: colors.error }}
+      />
     </ScrollView>
   );
 }
@@ -134,55 +155,170 @@ export default function HomeScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
-    padding: 16,
+    backgroundColor: colors.background,
   },
-  card: {
-    marginBottom: 16,
-    elevation: 2,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.lg,
+    backgroundColor: colors.surface,
+    ...shadows.sm,
+    marginBottom: spacing.md,
+  },
+  avatarContainer: {
+    marginRight: spacing.md,
+  },
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: borderRadius.round,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...shadows.md,
+  },
+  avatarText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.textOnPrimary,
+  },
+  agentInfo: {
+    flex: 1,
   },
   welcome: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+  },
+  agentName: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#8B4513',
-    marginBottom: 8,
+    color: colors.text,
+    marginBottom: spacing.xs,
   },
-  info: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
+  agentCode: {
+    fontSize: 12,
+    color: colors.textLight,
   },
-  syncRow: {
+  syncCard: {
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  syncHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginVertical: 4,
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  syncTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.text,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.round,
+    backgroundColor: colors.surfaceDark,
+  },
+  statusOnline: {
+    backgroundColor: colors.successLight + '20',
+  },
+  statusOffline: {
+    backgroundColor: colors.errorLight + '20',
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: borderRadius.round,
+    marginRight: spacing.xs,
+  },
+  statusDotOnline: {
+    backgroundColor: colors.success,
+  },
+  statusDotOffline: {
+    backgroundColor: colors.error,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  statusTextOnline: {
+    color: colors.success,
+  },
+  statusTextOffline: {
+    color: colors.error,
+  },
+  syncInfo: {
+    marginBottom: spacing.md,
+  },
+  syncInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   syncLabel: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
   },
-  syncValue: {
+  pendingBadge: {
+    minWidth: 32,
+    height: 32,
+    borderRadius: borderRadius.round,
+    backgroundColor: colors.surfaceDark,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+  },
+  pendingBadgeActive: {
+    backgroundColor: colors.warning + '20',
+  },
+  pendingCount: {
     fontSize: 14,
     fontWeight: 'bold',
-  },
-  online: {
-    color: '#4CAF50',
-  },
-  offline: {
-    color: '#F44336',
+    color: colors.warning,
   },
   syncButton: {
-    marginTop: 12,
+    marginTop: spacing.sm,
   },
-  divider: {
-    marginVertical: 12,
+  actionsSection: {
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.lg,
   },
-  actionButton: {
-    marginTop: 12,
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: spacing.md,
+  },
+  actionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  actionCard: {
+    width: '48%',
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    borderLeftWidth: 4,
+    ...shadows.sm,
+  },
+  actionIcon: {
+    fontSize: 32,
+    marginBottom: spacing.sm,
+  },
+  actionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    lineHeight: 20,
   },
   logoutButton: {
-    marginTop: 20,
-    marginBottom: 40,
-    borderColor: '#D32F2F',
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.xl,
   },
 });

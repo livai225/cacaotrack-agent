@@ -45,7 +45,7 @@ app.get('/api', (req, res) => {
     message: 'API CacaoTrack - Système de Gestion de la Filière Cacao',
     version: '2.4.0',
     status: 'running',
-    database: 'PostgreSQL + PostGIS',
+    database: 'MySQL',
     endpoints: {
       organisations: '/api/organisations',
       sections: '/api/sections',
@@ -86,21 +86,21 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// Route de vérification PostGIS
-app.get('/api/postgis', async (req, res) => {
+// Route de vérification MySQL
+app.get('/api/mysql', async (req, res) => {
   try {
-    const result: any = await prisma.$queryRaw`SELECT PostGIS_version() as version`;
+    const result: any = await prisma.$queryRaw`SELECT VERSION() as version`;
     res.json({
       success: true,
-      postgis: 'enabled',
+      mysql: 'connected',
       version: result[0]?.version || 'unknown',
       timestamp: new Date().toISOString()
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      postgis: 'error',
-      error: 'PostGIS check failed',
+      mysql: 'error',
+      error: 'MySQL check failed',
       timestamp: new Date().toISOString()
     });
   }
@@ -219,8 +219,37 @@ app.post('/api/agents/:id/password', async (req, res) => {
 
 // Organisations
 app.get('/api/organisations', async (req, res) => {
-  const orgs = await prisma.organisation.findMany();
-  res.json(orgs);
+  try {
+    const orgs = await prisma.organisation.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+    // S'assurer que les champs JSON sont correctement sérialisés pour MySQL
+    const serializedOrgs = orgs.map(org => ({
+      ...org,
+      president_contact: typeof org.president_contact === 'string' 
+        ? JSON.parse(org.president_contact) 
+        : org.president_contact,
+      dg_contact: org.dg_contact && typeof org.dg_contact === 'string'
+        ? JSON.parse(org.dg_contact)
+        : org.dg_contact,
+      secretaire_contact: org.secretaire_contact && typeof org.secretaire_contact === 'string'
+        ? JSON.parse(org.secretaire_contact)
+        : org.secretaire_contact,
+      tresorier_contact: org.tresorier_contact && typeof org.tresorier_contact === 'string'
+        ? JSON.parse(org.tresorier_contact)
+        : org.tresorier_contact,
+    }));
+    res.json(serializedOrgs);
+  } catch (error: any) {
+    console.error('❌ Erreur récupération organisations:', error);
+    console.error('Stack:', error.stack);
+    console.error('Message:', error.message);
+    res.status(500).json({ 
+      error: error.message || "Erreur récupération organisations",
+      code: error.code,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
 });
 app.get('/api/organisations/:id', async (req, res) => {
   try {
@@ -685,12 +714,31 @@ app.delete('/api/sections/:id', async (req, res) => {
 
 // Villages
 app.get('/api/villages', async (req, res) => {
-  const villages = await prisma.village.findMany();
-  res.json(villages);
+  try {
+    const villages = await prisma.village.findMany();
+    res.json(villages);
+  } catch (error: any) {
+    console.error('❌ Erreur récupération villages:', error);
+    res.status(500).json({ 
+      error: error.message || "Erreur récupération villages",
+      code: error.code
+    });
+  }
 });
 app.get('/api/villages/:id', async (req, res) => {
-  const village = await prisma.village.findUnique({ where: { id: req.params.id } });
-  res.json(village);
+  try {
+    const village = await prisma.village.findUnique({ where: { id: req.params.id } });
+    if (!village) {
+      return res.status(404).json({ error: "Village non trouvé" });
+    }
+    res.json(village);
+  } catch (error: any) {
+    console.error('❌ Erreur récupération village:', error);
+    res.status(500).json({ 
+      error: error.message || "Erreur récupération village",
+      code: error.code
+    });
+  }
 });
 
 app.post('/api/villages', async (req, res) => {
