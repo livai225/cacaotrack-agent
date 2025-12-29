@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import PhotoCapture from "@/components/forms/PhotoCapture";
 import GPSCapture from "@/components/forms/GPSCapture";
 import MultiPhone from "@/components/forms/MultiPhone";
-import { ArrowLeft, ArrowRight, Save, Loader2, MapPin, Users, Camera, Building2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Save, Loader2, MapPin, Users, Camera, Building2, Check } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { generateOrganisationCode } from "@/utils/codeGenerators";
@@ -367,11 +367,22 @@ export default function OrganisationForm() {
         </div>
       </div>
 
-      {/* Barre de progression */}
-      <div className="space-y-2 mb-6">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Étape {currentStep} sur {steps.length}</span>
-          <span className="font-medium">{steps[currentStep - 1].name}</span>
+      {/* Barre de progression et étapes */}
+      <div className="mb-8">
+        <div className="flex justify-between items-center mb-4 overflow-x-auto pb-2">
+          {steps.map((step) => {
+            const isCompleted = step.id < currentStep;
+            const isCurrent = step.id === currentStep;
+            const StepIcon = step.icon;
+            return (
+              <div key={step.id} className="flex flex-col items-center min-w-[100px]">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isCompleted ? "bg-green-500 text-white" : isCurrent ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}>
+                  {isCompleted ? <Check className="h-5 w-5" /> : <StepIcon className="h-5 w-5" />}
+                </div>
+                <span className={`text-xs mt-1 font-medium text-center ${isCurrent ? "text-primary" : "text-muted-foreground"}`}>{step.name}</span>
+              </div>
+            );
+          })}
         </div>
         <Progress value={progress} className="h-2" />
       </div>
