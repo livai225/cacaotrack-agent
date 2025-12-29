@@ -1,23 +1,85 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Layers, User, Plus, Minus, MapPin as MapPinIcon, Trees, X } from "lucide-react";
+import { ArrowLeft, Layers, User, Plus, Minus, MapPin as MapPinIcon, Trees, X, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { api } from "@/services/api";
+import type { Parcelle, Producteur } from "@/types/organisation";
 
-// Données simulées de plantations (Coordonnées relatives pour la démo 0-100%)
-const PLANTATIONS = [
-  { id: 1, code: "PLT-001", producteur: "Kouassi Jean", x: 45, y: 40, surface: 3.5, culture: "Cacao", statut: "Actif" },
-  { id: 2, code: "PLT-002", producteur: "Kouassi Jean", x: 48, y: 42, surface: 2.1, culture: "Cacao", statut: "Actif" },
-  { id: 3, code: "PLT-003", producteur: "Koné Moussa", x: 30, y: 60, surface: 4.0, culture: "Hévéa", statut: "En jachère" },
-  { id: 4, code: "PLT-004", producteur: "Koné Moussa", x: 35, y: 55, surface: 1.8, culture: "Cacao", statut: "Actif" },
-  { id: 5, code: "PLT-005", producteur: "Bali Bi", x: 65, y: 35, surface: 5.2, culture: "Palmier", statut: "Actif" },
-];
+interface PlantationMapItem {
+  id: string;
+  code: string;
+  producteur: string;
+  x: number;
+  y: number;
+  surface: number;
+  culture: string;
+  statut: string;
+  parcelle: Parcelle;
+}
 
 export default function PlantationMap() {
   const navigate = useNavigate();
-  const [popupInfo, setPopupInfo] = useState<typeof PLANTATIONS[0] | null>(null);
+  const [popupInfo, setPopupInfo] = useState<PlantationMapItem | null>(null);
   const [zoom, setZoom] = useState(1);
+  const [plantations, setPlantations] = useState<PlantationMapItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [producteurs, setProducteurs] = useState<Producteur[]>([]);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      const [parcelles, prods] = await Promise.all([
+        api.getParcelles(),
+        api.getProducteurs(),
+      ]);
+      setProducteurs(prods);
+      
+      // Convertir les parcelles avec GPS en positions sur la carte
+      const parcellesAvecGPS = parcelles.filter(p => p.latitude && p.longitude);
+      
+      // Calculer les limites géographiques pour normaliser les coordonnées
+      const latitudes = parcellesAvecGPS.map(p => p.latitude!);
+      const longitudes = parcellesAvecGPS.map(p => p.longitude!);
+      const minLat = Math.min(...latitudes);
+      const maxLat = Math.max(...latitudes);
+      const minLng = Math.min(...longitudes);
+      const maxLng = Math.max(...longitudes);
+      
+      const latRange = maxLat - minLat || 1;
+      const lngRange = maxLng - minLng || 1;
+      
+      const plantationsData: PlantationMapItem[] = parcellesAvecGPS.map(parcelle => {
+        const producteur = prods.find(p => p.id === parcelle.id_producteur);
+        // Normaliser les coordonnées GPS en pourcentages (0-100%)
+        const x = ((parcelle.longitude! - minLng) / lngRange) * 100;
+        const y = ((maxLat - parcelle.latitude!) / latRange) * 100; // Inverser Y car latitude augmente vers le nord
+        
+        return {
+          id: parcelle.id,
+          code: parcelle.code || `PARC-${parcelle.id.slice(0, 8)}`,
+          producteur: producteur?.nom_complet || "Inconnu",
+          x: Math.max(5, Math.min(95, x)), // Limiter entre 5% et 95%
+          y: Math.max(5, Math.min(95, y)),
+          surface: parcelle.superficie_declaree || 0,
+          culture: parcelle.culture || "Cacao",
+          statut: parcelle.statut === 'active' ? 'Actif' : 'Inactif',
+          parcelle,
+        };
+      });
+      
+      setPlantations(plantationsData);
+    } catch (error) {
+      console.error("Erreur chargement données:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.5, 3));
   const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.5, 1));
@@ -35,7 +97,9 @@ export default function PlantationMap() {
               <Layers className="h-6 w-6 text-primary" />
               Cartographie des Plantations
             </h1>
-            <p className="text-sm text-muted-foreground">Visualisation géospatiale des parcelles (Mode Démo)</p>
+            <p className="text-sm text-muted-foreground">
+              {isLoading ? "Chargement..." : `Visualisation géospatiale des parcelles (${plantations.length} parcelles)`}
+            </p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -63,7 +127,12 @@ export default function PlantationMap() {
                 <div className="absolute top-0 left-1/2 w-2 h-full bg-white/40"></div>
 
                 {/* Pins */}
-                {PLANTATIONS.map((plant) => (
+                {isLoading ? (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : (
+                  plantations.map((plant) => (
                     <div
                         key={plant.id}
                         className="absolute transform -translate-x-1/2 -translate-y-full cursor-pointer group"
@@ -89,7 +158,8 @@ export default function PlantationMap() {
                             {plant.code}
                         </div>
                     </div>
-                ))}
+                  ))
+                )}
             </div>
         </div>
 
@@ -150,9 +220,9 @@ export default function PlantationMap() {
             </div>
         )}
 
-        {/* Légende "Mock" */}
+        {/* Légende */}
         <div className="absolute bottom-4 left-4 bg-background/80 backdrop-blur p-2 rounded text-xs text-muted-foreground pointer-events-none z-10">
-            Mode Simulation • Données GPS fictives
+            {plantations.length} parcelles mappées • Données GPS réelles
         </div>
       </div>
     </div>

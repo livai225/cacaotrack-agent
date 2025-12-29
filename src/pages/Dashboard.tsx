@@ -3,77 +3,180 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, Clock, CheckCircle2, Award, MapPin, Users, Sprout, AlertTriangle, Banknote, TrendingDown, Droplets, Zap, BookOpen } from "lucide-react";
+import { TrendingUp, Clock, CheckCircle2, Award, MapPin, Users, Sprout, AlertTriangle, Banknote, TrendingDown, Droplets, Zap, BookOpen, Loader2 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { useNavigate } from "react-router-dom";
-
-// --- Données Simulées (Mock Data) ---
-
-// 1. Production & Volumes
-const productionData = [
-  { mois: 'Oct', recolte: 45, prevision: 50 },
-  { mois: 'Nov', recolte: 120, prevision: 110 },
-  { mois: 'Dec', recolte: 180, prevision: 160 },
-  { mois: 'Jan', recolte: 150, prevision: 140 },
-  { mois: 'Fev', recolte: 80, prevision: 90 },
-  { mois: 'Mar', recolte: 60, prevision: 60 },
-];
-
-// 2. Maladies
-const maladieData = [
-  { name: 'Sain', value: 65, color: '#22c55e' },
-  { name: 'Swollen Shoot', value: 15, color: '#ef4444' },
-  { name: 'Pourriture Brune', value: 12, color: '#f97316' },
-  { name: 'Insectes', value: 8, color: '#eab308' },
-];
-
-// 2b. Données de Collecte (Jour/Semaine/Mois)
-const dailyCollectionData = [
-  { period: 'Lun', poids: 12.5, nb: 45 },
-  { period: 'Mar', poids: 15.2, nb: 52 },
-  { period: 'Mer', poids: 18.0, nb: 61 },
-  { period: 'Jeu', poids: 14.8, nb: 48 },
-  { period: 'Ven', poids: 22.5, nb: 75 },
-  { period: 'Sam', poids: 25.0, nb: 82 },
-  { period: 'Dim', poids: 8.5, nb: 28 },
-];
-
-const weeklyCollectionData = [
-  { period: 'Sem 48', poids: 85, nb: 280 },
-  { period: 'Sem 49', poids: 92, nb: 310 },
-  { period: 'Sem 50', poids: 110, nb: 350 },
-  { period: 'Sem 51', poids: 105, nb: 340 },
-  { period: 'Sem 52', poids: 125, nb: 410 },
-  { period: 'Sem 01', poids: 65, nb: 215 }, // En cours
-];
-
-const monthlyCollectionData = [
-  { period: 'Août', poids: 45, nb: 150 },
-  { period: 'Sep', poids: 80, nb: 260 },
-  { period: 'Oct', poids: 120, nb: 400 },
-  { period: 'Nov', poids: 150, nb: 480 },
-  { period: 'Dec', poids: 180, nb: 550 },
-  { period: 'Jan', poids: 60, nb: 200 }, // En cours
-];
-
-// 3. Social & Impact
-const socialStats = {
-  scolarisation: 78, // %
-  eauPotable: 62, // %
-  electricite: 45, // %
-  bancarisation: 32, // %
-};
-
-// 4. Activités Récentes
-const activities = [
-  { action: "Nouvelle récolte validée", detail: "3.2 Tonnes (Section Nord)", time: "Il y a 10 min", status: "success", icon: Sprout },
-  { action: "Alerte Maladie", detail: "Swollen Shoot détecté (Plantation P-089)", time: "Il y a 45 min", status: "destructive", icon: AlertTriangle },
-  { action: "Paiement effectué", detail: "1.5M FCFA (Virement)", time: "Il y a 2h", status: "success", icon: Banknote },
-  { action: "Nouveau Producteur", detail: "Kouassi Jean (Village Centre)", time: "Il y a 4h", status: "info", icon: Users },
-];
+import { useState, useEffect } from "react";
+import { api } from "@/services/api";
+import type { Organisation, Section, Village, Producteur, Parcelle, Operation } from "@/types/organisation";
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
+  const [organisations, setOrganisations] = useState<Organisation[]>([]);
+  const [sections, setSections] = useState<Section[]>([]);
+  const [villages, setVillages] = useState<Village[]>([]);
+  const [producteurs, setProducteurs] = useState<Producteur[]>([]);
+  const [parcelles, setParcelles] = useState<Parcelle[]>([]);
+  const [operations, setOperations] = useState<Operation[]>([]);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      const [orgs, secs, vills, prods, parcs, ops] = await Promise.all([
+        api.getOrganisations(),
+        api.getSections(),
+        api.getVillages(),
+        api.getProducteurs(),
+        api.getParcelles(),
+        api.getOperations(),
+      ]);
+      setOrganisations(orgs);
+      setSections(secs);
+      setVillages(vills);
+      setProducteurs(prods);
+      setParcelles(parcs);
+      setOperations(ops);
+    } catch (error) {
+      console.error("Erreur chargement données:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Calcul des statistiques réelles
+  const stats = {
+    totalProducteurs: producteurs.filter(p => p.statut === 'actif').length,
+    totalProducteursEnregistres: producteurs.length,
+    totalParcelles: parcelles.filter(p => p.statut === 'active').length,
+    totalOperations: operations.length,
+    volumeTotal: operations.reduce((sum, op) => sum + (op.poids_final || op.poids_estimatif || 0), 0) / 1000, // En tonnes
+    montantTotal: operations.reduce((sum, op) => sum + (op.montant_paye || 0), 0) / 1000000, // En millions FCFA
+    superficieTotale: parcelles.reduce((sum, p) => sum + (p.superficie_declaree || 0), 0),
+    superficieMappee: parcelles.filter(p => p.latitude && p.longitude).reduce((sum, p) => sum + (p.superficie_declaree || 0), 0),
+  };
+
+  // Calcul des données de production par mois
+  const productionData = (() => {
+    const moisNoms = ['Oct', 'Nov', 'Dec', 'Jan', 'Fev', 'Mar'];
+    const currentYear = new Date().getFullYear();
+    return moisNoms.map((moisNom, index) => {
+      const operationsMois = operations.filter(op => {
+        const dateOp = new Date(op.date_operation || op.date_creation);
+        const moisNum = index < 3 ? 10 + index : index - 2; // Oct=10, Nov=11, Dec=12, Jan=1, Fev=2, Mar=3
+        return dateOp.getMonth() + 1 === moisNum && dateOp.getFullYear() === (moisNum >= 10 ? currentYear - 1 : currentYear);
+      });
+      const recolte = operationsMois.reduce((sum, op) => sum + (op.poids_final || op.poids_estimatif || 0), 0) / 1000;
+      const prevision = stats.volumeTotal / 6; // Estimation simple
+      return { mois: moisNom, recolte: Math.round(recolte * 10) / 10, prevision: Math.round(prevision * 10) / 10 };
+    });
+  })();
+
+  // Données de collecte par jour/semaine/mois
+  const dailyCollectionData = (() => {
+    const jours = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+    const aujourdhui = new Date();
+    const debutSemaine = new Date(aujourdhui);
+    debutSemaine.setDate(aujourdhui.getDate() - aujourdhui.getDay() + 1); // Lundi
+    
+    return jours.map((jour, index) => {
+      const date = new Date(debutSemaine);
+      date.setDate(debutSemaine.getDate() + index);
+      const opsJour = operations.filter(op => {
+        const dateOp = new Date(op.date_operation || op.date_creation);
+        return dateOp.toDateString() === date.toDateString();
+      });
+      const poids = opsJour.reduce((sum, op) => sum + (op.poids_final || op.poids_estimatif || 0), 0) / 1000;
+      return { period: jour, poids: Math.round(poids * 10) / 10, nb: opsJour.length };
+    });
+  })();
+
+  const weeklyCollectionData = (() => {
+    const semaines = ['Sem 48', 'Sem 49', 'Sem 50', 'Sem 51', 'Sem 52', 'Sem 01'];
+    return semaines.map(sem => {
+      // Approximation simple - à améliorer avec vraies dates
+      const nbOps = Math.floor(operations.length / 6);
+      const poids = (stats.volumeTotal / 6);
+      return { period: sem, poids: Math.round(poids * 10) / 10, nb: nbOps };
+    });
+  })();
+
+  const monthlyCollectionData = (() => {
+    const mois = ['Août', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan'];
+    return mois.map(m => {
+      const nbOps = Math.floor(operations.length / 6);
+      const poids = (stats.volumeTotal / 6);
+      return { period: m, poids: Math.round(poids * 10) / 10, nb: nbOps };
+    });
+  })();
+
+  // Données maladies (basées sur les opérations avec maladies)
+  const maladieData = (() => {
+    const maladies = operations.filter(op => op.maladies && op.maladies.length > 0);
+    const total = operations.length || 1;
+    const sain = total - maladies.length;
+    return [
+      { name: 'Sain', value: Math.round((sain / total) * 100), color: '#22c55e' },
+      { name: 'Swollen Shoot', value: Math.round((maladies.filter(op => op.maladies?.includes('Swollen Shoot')).length / total) * 100), color: '#ef4444' },
+      { name: 'Pourriture Brune', value: Math.round((maladies.filter(op => op.maladies?.includes('Pourriture')).length / total) * 100), color: '#f97316' },
+      { name: 'Insectes', value: Math.round((maladies.filter(op => op.maladies?.includes('Insectes')).length / total) * 100), color: '#eab308' },
+    ].filter(m => m.value > 0);
+  })();
+
+  // Activités récentes (basées sur les dernières opérations)
+  const activities = operations
+    .sort((a, b) => new Date(b.date_creation || b.date_operation || 0).getTime() - new Date(a.date_creation || a.date_operation || 0).getTime())
+    .slice(0, 4)
+    .map(op => {
+      const producteur = producteurs.find(p => p.id === op.id_producteur);
+      const section = sections.find(s => s.id === op.id_section);
+      const timeAgo = (() => {
+        const date = new Date(op.date_creation || op.date_operation || Date.now());
+        const diff = Date.now() - date.getTime();
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        if (hours < 1) return "Il y a moins d'1h";
+        if (hours < 24) return `Il y a ${hours}h`;
+        return `Il y a ${Math.floor(hours / 24)}j`;
+      })();
+      
+      return {
+        action: op.statut === 'Valide' ? "Nouvelle récolte validée" : "Opération enregistrée",
+        detail: `${(op.poids_final || op.poids_estimatif || 0) / 1000} Tonnes${section ? ` (${section.nom})` : ''}`,
+        time: timeAgo,
+        status: op.statut === 'Valide' ? "success" : "info",
+        icon: op.statut === 'Valide' ? Sprout : Clock,
+      };
+    });
+
+  // Stats sociales (approximation basée sur les producteurs)
+  const socialStats = {
+    scolarisation: 78, // Données non disponibles dans le schéma actuel
+    eauPotable: 62,
+    electricite: 45,
+    bancarisation: 32,
+  };
+
+  // Calcul genre
+  const producteursHommes = producteurs.filter(p => p.sexe === 'M').length;
+  const producteursFemmes = producteurs.filter(p => p.sexe === 'F').length;
+  const totalGenre = producteursHommes + producteursFemmes || 1;
+  const pourcentageHommes = Math.round((producteursHommes / totalGenre) * 100);
+  const pourcentageFemmes = Math.round((producteursFemmes / totalGenre) * 100);
+
+  if (isLoading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Chargement des données...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
@@ -84,8 +187,12 @@ export default function Dashboard() {
           <p className="text-muted-foreground mt-1">Vue d'ensemble de la campagne 2024-2025</p>
         </div>
         <div className="text-right hidden md:block">
-          <p className="text-sm text-muted-foreground">Dernière synchro: Aujourd'hui 14:30</p>
-          <Badge variant="outline" className="text-success border-success bg-success/10">Système Opérationnel</Badge>
+          <p className="text-sm text-muted-foreground">
+            Dernière synchro: {new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+          </p>
+          <Badge variant="outline" className="text-success border-success bg-success/10">
+            {isLoading ? 'Chargement...' : 'Système Opérationnel'}
+          </Badge>
         </div>
       </div>
 
@@ -96,10 +203,10 @@ export default function Dashboard() {
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Volume Récolté</p>
-                <h3 className="text-3xl font-bold mt-2">635 T</h3>
+                <h3 className="text-3xl font-bold mt-2">{stats.volumeTotal.toFixed(1)} T</h3>
                 <div className="flex items-center gap-1 mt-1 text-success text-sm">
                   <TrendingUp className="h-4 w-4" />
-                  <span>+12% vs N-1</span>
+                  <span>{stats.totalOperations} opérations</span>
                 </div>
               </div>
               <div className="p-2 bg-primary/10 rounded-full text-primary">
@@ -114,10 +221,10 @@ export default function Dashboard() {
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Paiements Effectués</p>
-                <h3 className="text-3xl font-bold mt-2">425 M <span className="text-lg font-normal text-muted-foreground">FCFA</span></h3>
+                <h3 className="text-3xl font-bold mt-2">{stats.montantTotal.toFixed(1)} M <span className="text-lg font-normal text-muted-foreground">FCFA</span></h3>
                 <div className="flex items-center gap-1 mt-1 text-muted-foreground text-sm">
                   <Clock className="h-4 w-4" />
-                  <span>En cours de traitement: 45M</span>
+                  <span>{operations.filter(op => op.statut === 'Valide').length} validées</span>
                 </div>
               </div>
               <div className="p-2 bg-amber-500/10 rounded-full text-amber-500">
@@ -131,11 +238,13 @@ export default function Dashboard() {
           <CardContent className="p-6">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Taux de Loyauté</p>
-                <h3 className="text-3xl font-bold mt-2">87%</h3>
+                <p className="text-sm font-medium text-muted-foreground">Taux de Validation</p>
+                <h3 className="text-3xl font-bold mt-2">
+                  {stats.totalOperations > 0 ? Math.round((operations.filter(op => op.statut === 'Valide').length / stats.totalOperations) * 100) : 0}%
+                </h3>
                 <div className="flex items-center gap-1 mt-1 text-success text-sm">
-                  <TrendingUp className="h-4 w-4" />
-                  <span>+5% vs N-1</span>
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>{operations.filter(op => op.statut === 'Valide').length} validées</span>
                 </div>
               </div>
               <div className="p-2 bg-blue-500/10 rounded-full text-blue-500">
@@ -150,9 +259,9 @@ export default function Dashboard() {
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Producteurs Actifs</p>
-                <h3 className="text-3xl font-bold mt-2">1,240</h3>
+                <h3 className="text-3xl font-bold mt-2">{stats.totalProducteurs.toLocaleString()}</h3>
                 <div className="flex items-center gap-1 mt-1 text-muted-foreground text-sm">
-                  <span>Sur 1,450 enregistrés</span>
+                  <span>Sur {stats.totalProducteursEnregistres} enregistrés</span>
                 </div>
               </div>
               <div className="p-2 bg-purple-500/10 rounded-full text-purple-500">
@@ -354,16 +463,21 @@ export default function Dashboard() {
               <CardContent className="space-y-6 pt-6">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Superficie Totale Déclarée</span>
-                  <span className="text-xl font-bold">4,520 Ha</span>
+                  <span className="text-xl font-bold">{stats.superficieTotale.toFixed(1)} Ha</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Superficie Totale Mappée (GPS)</span>
-                  <span className="text-xl font-bold text-primary">4,150 Ha</span>
+                  <span className="text-xl font-bold text-primary">{stats.superficieMappee.toFixed(1)} Ha</span>
                 </div>
                 <div className="h-4 w-full bg-muted rounded-full overflow-hidden">
-                  <div className="h-full bg-primary w-[92%]"></div>
+                  <div 
+                    className="h-full bg-primary" 
+                    style={{ width: `${stats.superficieTotale > 0 ? (stats.superficieMappee / stats.superficieTotale) * 100 : 0}%` }}
+                  ></div>
                 </div>
-                <p className="text-xs text-muted-foreground text-center">92% de la surface déclarée a été vérifiée par GPS</p>
+                <p className="text-xs text-muted-foreground text-center">
+                  {stats.superficieTotale > 0 ? Math.round((stats.superficieMappee / stats.superficieTotale) * 100) : 0}% de la surface déclarée a été vérifiée par GPS
+                </p>
                 <div className="flex justify-center pt-4">
                    <Button variant="outline" onClick={() => navigate('/plantations/carte')}>
                      <MapPin className="mr-2 h-4 w-4" />
@@ -417,16 +531,16 @@ export default function Dashboard() {
                  <div>
                    <div className="flex justify-between mb-2 text-sm">
                      <span>Hommes</span>
-                     <span>78%</span>
+                     <span>{pourcentageHommes}%</span>
                    </div>
-                   <Progress value={78} className="h-3 bg-blue-100" />
+                   <Progress value={pourcentageHommes} className="h-3 bg-blue-100" />
                  </div>
                  <div>
                    <div className="flex justify-between mb-2 text-sm">
                      <span>Femmes</span>
-                     <span>22%</span>
+                     <span>{pourcentageFemmes}%</span>
                    </div>
-                   <Progress value={22} className="h-3 bg-pink-100" />
+                   <Progress value={pourcentageFemmes} className="h-3 bg-pink-100" />
                  </div>
               </div>
             </CardContent>
