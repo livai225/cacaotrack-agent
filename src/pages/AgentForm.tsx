@@ -9,8 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Loader2, Search, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Save, Loader2, Search, X, User, IdCard, MapPin, Check } from "lucide-react";
 import PhotoCapture from "@/components/forms/PhotoCapture";
 import DateInput from "@/components/forms/DateInput";
 import { agentService } from "@/services/agentService";
@@ -34,10 +35,17 @@ const agentSchema = z.object({
 
 type AgentFormData = z.infer<typeof agentSchema>;
 
+const steps = [
+  { id: 1, name: "Informations de Base", icon: User },
+  { id: 2, name: "Identité", icon: IdCard },
+  { id: 3, name: "Affectation Régions", icon: MapPin },
+];
+
 export default function AgentForm() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEdit = !!id;
+  const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [regions, setRegions] = useState<Region[]>([]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
@@ -49,6 +57,7 @@ export default function AgentForm() {
     formState: { errors },
     setValue,
     watch,
+    trigger,
   } = useForm<AgentFormData>({
     resolver: zodResolver(agentSchema),
     defaultValues: {
@@ -137,28 +146,31 @@ export default function AgentForm() {
     region.code.toLowerCase().includes(searchRegion.toLowerCase())
   );
 
-  if (isLoading && isEdit) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  const handleNext = async () => {
+    let fieldsToValidate: (keyof AgentFormData)[] = [];
+    
+    if (currentStep === 1) {
+      fieldsToValidate = ["code", "nom", "prenom", "telephone", "statut"];
+    } else if (currentStep === 2) {
+      fieldsToValidate = ["date_naissance", "lieu_naissance", "nationalite"];
+    } else if (currentStep === 3) {
+      fieldsToValidate = ["regions"];
+    }
+    
+    const isValid = await trigger(fieldsToValidate as any);
+    if (isValid) {
+      setCurrentStep(prev => Math.min(prev + 1, steps.length));
+    }
+  };
 
-  return (
-    <div className="container mx-auto p-6 max-w-4xl">
-      <Button variant="ghost" onClick={() => navigate("/agents")} className="mb-4">
-        <ArrowLeft className="mr-2 h-4 w-4" />
-        Retour
-      </Button>
+  const handlePrevious = () => {
+    setCurrentStep(prev => Math.max(prev - 1, 1));
+  };
 
-      <h1 className="text-3xl font-bold text-foreground mb-6">
-        {isEdit ? "Modifier l'Agent" : "Nouvel Agent"}
-      </h1>
-
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <div className="space-y-6">
-          {/* Informations de base */}
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 1:
+        return (
           <Card>
             <CardHeader>
               <CardTitle>Informations de Base</CardTitle>
@@ -218,8 +230,9 @@ export default function AgentForm() {
               />
             </CardContent>
           </Card>
-
-          {/* Identité */}
+        );
+      case 2:
+        return (
           <Card>
             <CardHeader>
               <CardTitle>Identité</CardTitle>
@@ -260,8 +273,9 @@ export default function AgentForm() {
               </div>
             </CardContent>
           </Card>
-
-          {/* Affectation aux Régions */}
+        );
+      case 3:
+        return (
           <Card>
             <CardHeader>
               <CardTitle>Affectation aux Régions *</CardTitle>
@@ -270,7 +284,6 @@ export default function AgentForm() {
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Champ de recherche */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -290,7 +303,6 @@ export default function AgentForm() {
                 )}
               </div>
 
-              {/* Liste des régions */}
               <div className="max-h-96 overflow-y-auto border rounded-lg p-4">
                 {filteredRegions.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">
@@ -330,19 +342,85 @@ export default function AgentForm() {
               )}
             </CardContent>
           </Card>
+        );
+      default:
+        return null;
+    }
+  };
 
-          <div className="flex justify-end gap-4">
-            <Button type="button" variant="outline" onClick={() => navigate("/agents")}>
-              Annuler
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="mr-2 h-4 w-4" />
+  if (isLoading && isEdit) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const progress = (currentStep / steps.length) * 100;
+
+  return (
+    <div className="container mx-auto p-6 max-w-4xl">
+      <Button variant="ghost" onClick={() => navigate("/agents")} className="mb-4">
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        Retour
+      </Button>
+
+      <h1 className="text-3xl font-bold text-foreground mb-6">
+        {isEdit ? "Modifier l'Agent" : "Nouvel Agent"}
+      </h1>
+
+      <div className="mb-8">
+        <div className="flex justify-between items-center mb-4 overflow-x-auto pb-2">
+          {steps.map((step) => {
+            const isCompleted = step.id < currentStep;
+            const isCurrent = step.id === currentStep;
+            const StepIcon = step.icon;
+            return (
+              <div key={step.id} className="flex flex-col items-center min-w-[100px]">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isCompleted ? "bg-green-500 text-white" : isCurrent ? "bg-primary text-white" : "bg-muted text-muted-foreground"}`}>
+                  {isCompleted ? <Check className="h-5 w-5" /> : <StepIcon className="h-5 w-5" />}
+                </div>
+                <span className={`text-xs mt-1 font-medium text-center ${isCurrent ? "text-primary" : "text-muted-foreground"}`}>{step.name}</span>
+              </div>
+            );
+          })}
+        </div>
+        <Progress value={progress} className="h-2" />
+      </div>
+
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <div className="space-y-6">
+          {renderStepContent()}
+
+          <div className="flex justify-between gap-4">
+            <div>
+              {currentStep > 1 && (
+                <Button type="button" variant="outline" onClick={handlePrevious}>
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Précédent
+                </Button>
               )}
-              {isEdit ? "Modifier" : "Créer"}
-            </Button>
+            </div>
+            <div className="flex gap-4">
+              <Button type="button" variant="outline" onClick={() => navigate("/agents")}>
+                Annuler
+              </Button>
+              {currentStep < steps.length ? (
+                <Button type="button" onClick={handleNext}>
+                  Suivant
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              ) : (
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
+                  {isEdit ? "Modifier" : "Créer"}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </form>
