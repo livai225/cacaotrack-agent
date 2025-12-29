@@ -54,8 +54,8 @@ export default function Dashboard() {
     totalProducteursEnregistres: producteurs.length,
     totalParcelles: parcelles.filter(p => p.statut === 'active').length,
     totalOperations: operations.length,
-    volumeTotal: operations.reduce((sum, op) => sum + (op.poids_final || op.poids_estimatif || 0), 0) / 1000, // En tonnes
-    montantTotal: operations.reduce((sum, op) => sum + (op.montant_paye || 0), 0) / 1000000, // En millions FCFA
+    volumeTotal: operations.reduce((sum, op) => sum + (op.manutention_pesee || op.poids_estimatif || 0), 0) / 1000, // En tonnes (poids réel de la pesée)
+    montantTotal: operations.reduce((sum, op) => sum + ((op.montant_especes || 0) + (op.montant_cheque || 0)), 0) / 1000000, // En millions FCFA
     superficieTotale: parcelles.reduce((sum, p) => sum + (p.superficie_declaree || 0), 0),
     superficieMappee: parcelles.filter(p => p.latitude && p.longitude).reduce((sum, p) => sum + (p.superficie_declaree || 0), 0),
   };
@@ -66,11 +66,12 @@ export default function Dashboard() {
     const currentYear = new Date().getFullYear();
     return moisNoms.map((moisNom, index) => {
       const operationsMois = operations.filter(op => {
-        const dateOp = new Date(op.date_operation || op.date_creation);
+        // Utiliser date_recolte_1 comme date principale, sinon date_creation
+        const dateOp = new Date(op.date_recolte_1 || op.date_creation);
         const moisNum = index < 3 ? 10 + index : index - 2; // Oct=10, Nov=11, Dec=12, Jan=1, Fev=2, Mar=3
         return dateOp.getMonth() + 1 === moisNum && dateOp.getFullYear() === (moisNum >= 10 ? currentYear - 1 : currentYear);
       });
-      const recolte = operationsMois.reduce((sum, op) => sum + (op.poids_final || op.poids_estimatif || 0), 0) / 1000;
+      const recolte = operationsMois.reduce((sum, op) => sum + (op.manutention_pesee || op.poids_estimatif || 0), 0) / 1000;
       const prevision = stats.volumeTotal / 6; // Estimation simple
       return { mois: moisNom, recolte: Math.round(recolte * 10) / 10, prevision: Math.round(prevision * 10) / 10 };
     });
@@ -87,10 +88,11 @@ export default function Dashboard() {
       const date = new Date(debutSemaine);
       date.setDate(debutSemaine.getDate() + index);
       const opsJour = operations.filter(op => {
-        const dateOp = new Date(op.date_operation || op.date_creation);
+        // Utiliser date_livraison comme date de collecte, sinon date_creation
+        const dateOp = new Date(op.date_livraison || op.date_creation);
         return dateOp.toDateString() === date.toDateString();
       });
-      const poids = opsJour.reduce((sum, op) => sum + (op.poids_final || op.poids_estimatif || 0), 0) / 1000;
+      const poids = opsJour.reduce((sum, op) => sum + (op.manutention_pesee || op.poids_estimatif || 0), 0) / 1000;
       return { period: jour, poids: Math.round(poids * 10) / 10, nb: opsJour.length };
     });
   })();
@@ -114,28 +116,30 @@ export default function Dashboard() {
     });
   })();
 
-  // Données maladies (basées sur les opérations avec maladies)
+  // Données maladies (basées sur validation_statut - Accepté = Sain, Refoulé/A reconditionner = Problème)
   const maladieData = (() => {
-    const maladies = operations.filter(op => op.maladies && op.maladies.length > 0);
     const total = operations.length || 1;
-    const sain = total - maladies.length;
+    const acceptes = operations.filter(op => op.validation_statut === 'Accepté').length;
+    const refoules = operations.filter(op => op.validation_statut === 'Refoulé').length;
+    const reconditionner = operations.filter(op => op.validation_statut === 'A reconditionner').length;
+    const sain = acceptes;
+    
     return [
-      { name: 'Sain', value: Math.round((sain / total) * 100), color: '#22c55e' },
-      { name: 'Swollen Shoot', value: Math.round((maladies.filter(op => op.maladies?.includes('Swollen Shoot')).length / total) * 100), color: '#ef4444' },
-      { name: 'Pourriture Brune', value: Math.round((maladies.filter(op => op.maladies?.includes('Pourriture')).length / total) * 100), color: '#f97316' },
-      { name: 'Insectes', value: Math.round((maladies.filter(op => op.maladies?.includes('Insectes')).length / total) * 100), color: '#eab308' },
+      { name: 'Accepté', value: Math.round((sain / total) * 100), color: '#22c55e' },
+      { name: 'Refoulé', value: Math.round((refoules / total) * 100), color: '#ef4444' },
+      { name: 'A reconditionner', value: Math.round((reconditionner / total) * 100), color: '#f97316' },
     ].filter(m => m.value > 0);
   })();
 
   // Activités récentes (basées sur les dernières opérations)
   const activities = operations
-    .sort((a, b) => new Date(b.date_creation || b.date_operation || 0).getTime() - new Date(a.date_creation || a.date_operation || 0).getTime())
+    .sort((a, b) => new Date(b.date_creation || 0).getTime() - new Date(a.date_creation || 0).getTime())
     .slice(0, 4)
     .map(op => {
       const producteur = producteurs.find(p => p.id === op.id_producteur);
-      const section = sections.find(s => s.id === op.id_section);
+      const village = villages.find(v => v.id === op.id_village);
       const timeAgo = (() => {
-        const date = new Date(op.date_creation || op.date_operation || Date.now());
+        const date = new Date(op.date_creation || Date.now());
         const diff = Date.now() - date.getTime();
         const hours = Math.floor(diff / (1000 * 60 * 60));
         if (hours < 1) return "Il y a moins d'1h";
@@ -144,11 +148,11 @@ export default function Dashboard() {
       })();
       
       return {
-        action: op.statut === 'Valide' ? "Nouvelle récolte validée" : "Opération enregistrée",
-        detail: `${(op.poids_final || op.poids_estimatif || 0) / 1000} Tonnes${section ? ` (${section.nom})` : ''}`,
+        action: op.statut === 'Validé' || op.statut === 'Payé' ? "Nouvelle récolte validée" : "Opération enregistrée",
+        detail: `${(op.manutention_pesee || op.poids_estimatif || 0) / 1000} Tonnes${village ? ` (${village.nom})` : ''}`,
         time: timeAgo,
-        status: op.statut === 'Valide' ? "success" : "info",
-        icon: op.statut === 'Valide' ? Sprout : Clock,
+        status: op.statut === 'Validé' || op.statut === 'Payé' ? "success" : op.statut === 'En cours' ? "info" : "destructive",
+        icon: op.statut === 'Validé' || op.statut === 'Payé' ? Sprout : Clock,
       };
     });
 
@@ -224,7 +228,7 @@ export default function Dashboard() {
                 <h3 className="text-3xl font-bold mt-2">{stats.montantTotal.toFixed(1)} M <span className="text-lg font-normal text-muted-foreground">FCFA</span></h3>
                 <div className="flex items-center gap-1 mt-1 text-muted-foreground text-sm">
                   <Clock className="h-4 w-4" />
-                  <span>{operations.filter(op => op.statut === 'Valide').length} validées</span>
+                  <span>{operations.filter(op => op.statut === 'Validé' || op.statut === 'Payé').length} validées</span>
                 </div>
               </div>
               <div className="p-2 bg-amber-500/10 rounded-full text-amber-500">
@@ -240,11 +244,11 @@ export default function Dashboard() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Taux de Validation</p>
                 <h3 className="text-3xl font-bold mt-2">
-                  {stats.totalOperations > 0 ? Math.round((operations.filter(op => op.statut === 'Valide').length / stats.totalOperations) * 100) : 0}%
+                  {stats.totalOperations > 0 ? Math.round((operations.filter(op => op.statut === 'Validé' || op.statut === 'Payé').length / stats.totalOperations) * 100) : 0}%
                 </h3>
                 <div className="flex items-center gap-1 mt-1 text-success text-sm">
                   <CheckCircle2 className="h-4 w-4" />
-                  <span>{operations.filter(op => op.statut === 'Valide').length} validées</span>
+                  <span>{operations.filter(op => op.statut === 'Validé' || op.statut === 'Payé').length} validées</span>
                 </div>
               </div>
               <div className="p-2 bg-blue-500/10 rounded-full text-blue-500">
