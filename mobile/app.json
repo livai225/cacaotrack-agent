@@ -5,11 +5,8 @@
     "version": "1.0.0",
     "sdkVersion": "51.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
       "backgroundColor": "#8B4513"
     },
     "assetBundlePatterns": [
@@ -20,10 +17,6 @@
       "bundleIdentifier": "com.cacaotrack.agent"
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#8B4513"
-      },
       "package": "com.cacaotrack.agent",
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
@@ -31,12 +24,15 @@
         "android.permission.RECORD_AUDIO"
       ]
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
     "plugins": [
       "expo-location",
       "expo-image-picker"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "91b8fa93-2ab9-4dca-acf6-67cbaa210452"
+      }
+    },
+    "owner": "dychou"
   }
 }
