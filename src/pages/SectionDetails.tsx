@@ -38,6 +38,8 @@ export default function SectionDetails() {
           setProducteurs(sectionProducteurs);
         } catch (error) {
           console.error("Erreur chargement section:", error);
+          // Afficher un message d'erreur à l'utilisateur
+          setSection(undefined);
         } finally {
           setIsLoading(false);
         }
@@ -55,13 +57,13 @@ export default function SectionDetails() {
   }
 
 
-  const ContactItem = ({ role, nom, contact }: { role: string, nom: string, contact: string[] }) => (
+  const ContactItem = ({ role, nom, contact }: { role: string, nom: string, contact?: string[] | null }) => (
     <div className="flex justify-between items-center p-2 rounded bg-muted/10">
       <div>
         <p className="text-xs uppercase font-semibold text-muted-foreground">{role}</p>
-        <p className="font-medium">{nom}</p>
+        <p className="font-medium">{nom || 'Non renseigné'}</p>
       </div>
-      <Badge variant="outline">{contact[0]}</Badge>
+      <Badge variant="outline">{contact && contact.length > 0 ? contact[0] : 'N/A'}</Badge>
     </div>
   );
 
@@ -73,13 +75,13 @@ export default function SectionDetails() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">{section.nom}</h1>
+            <h1 className="text-3xl font-bold">{section.nom || 'Section sans nom'}</h1>
             <div className="flex items-center gap-2 text-muted-foreground">
-              <span className="font-mono">{section.code}</span>
+              <span className="font-mono">{section.code || 'N/A'}</span>
               <span>•</span>
-              <span>{section.localite}</span>
+              <span>{section.localite || 'Localité non renseignée'}</span>
               <span>•</span>
-              <Badge>{section.statut}</Badge>
+              <Badge>{section.statut || 'inactif'}</Badge>
             </div>
           </div>
         </div>
@@ -92,10 +94,10 @@ export default function SectionDetails() {
         <Card>
           <CardHeader><CardTitle className="flex items-center gap-2"><Users className="h-5 w-5 text-blue-600" /> Équipe & Personnel</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <ContactItem role="Président" nom={section.president_nom} contact={section.president_contact} />
-            <ContactItem role="Secrétaire" nom={section.secretaire_nom} contact={section.secretaire_contact} />
-            <ContactItem role="Magasinier" nom={section.magasinier_nom} contact={section.magasinier_contact} />
-            <ContactItem role="Peseur" nom={section.peseur_nom} contact={section.peseur_contact} />
+            <ContactItem role="Président" nom={section.president_nom || ''} contact={section.president_contact} />
+            <ContactItem role="Secrétaire" nom={section.secretaire_nom || ''} contact={section.secretaire_contact} />
+            <ContactItem role="Magasinier" nom={section.magasinier_nom || ''} contact={section.magasinier_contact} />
+            <ContactItem role="Peseur" nom={section.peseur_nom || ''} contact={section.peseur_contact} />
           </CardContent>
         </Card>
 
@@ -106,9 +108,9 @@ export default function SectionDetails() {
             <div>
               <h4 className="text-sm font-semibold mb-2">Véhicules</h4>
               <div className="space-y-1 text-sm">
-                <div className="flex justify-between"><span>Camionnettes</span> <b>{section.vehicule_camionnette_nombre}</b></div>
-                <div className="flex justify-between"><span>Tricycles</span> <b>{section.vehicule_tricycle_nombre}</b></div>
-                <div className="flex justify-between"><span>Motos</span> <b>{section.vehicule_moto_nombre}</b></div>
+                <div className="flex justify-between"><span>Camionnettes</span> <b>{section.vehicule_camionnette_nombre ?? 0}</b></div>
+                <div className="flex justify-between"><span>Tricycles</span> <b>{section.vehicule_tricycle_nombre ?? 0}</b></div>
+                <div className="flex justify-between"><span>Motos</span> <b>{section.vehicule_moto_nombre ?? 0}</b></div>
               </div>
             </div>
             <div>
@@ -118,6 +120,9 @@ export default function SectionDetails() {
                 {section.materiel_dickey_john && <Badge variant="secondary">Dickey John</Badge>}
                 {section.materiel_sondes && <Badge variant="secondary">Sondes</Badge>}
                 {section.materiel_couteaux && <Badge variant="secondary">Couteaux</Badge>}
+                {!section.materiel_bascule && !section.materiel_dickey_john && !section.materiel_sondes && !section.materiel_couteaux && (
+                  <span className="text-xs text-muted-foreground">Aucun matériel déclaré</span>
+                )}
               </div>
             </div>
           </CardContent>
@@ -128,16 +133,16 @@ export default function SectionDetails() {
           <CardHeader><CardTitle className="flex items-center gap-2"><Scale className="h-5 w-5 text-green-600" /> Performance & Production</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="p-4 bg-green-50 rounded text-center">
-              <p className="text-3xl font-bold text-green-700">{section.tonnage_c_cours} T</p>
+              <p className="text-3xl font-bold text-green-700">{section.tonnage_c_cours ?? 0} T</p>
               <p className="text-xs text-green-800 uppercase font-bold">Production Campagne</p>
             </div>
             <div className="grid grid-cols-2 gap-4 text-center">
               <div className="p-2 bg-muted/30 rounded">
-                <p className="text-xl font-bold">{section.nb_producteurs}</p>
+                <p className="text-xl font-bold">{section.nb_producteurs ?? 0}</p>
                 <p className="text-xs text-muted-foreground">Producteurs</p>
               </div>
               <div className="p-2 bg-muted/30 rounded">
-                <p className="text-xl font-bold">{section.tonnage_potentiel} T</p>
+                <p className="text-xl font-bold">{section.tonnage_potentiel ?? 0} T</p>
                 <p className="text-xs text-muted-foreground">Potentiel</p>
               </div>
             </div>
