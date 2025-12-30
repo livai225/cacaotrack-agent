@@ -1474,9 +1474,23 @@ app.post('/api/agents', async (req, res) => {
       password_hash = await bcrypt.hash('password123', 10);
     }
 
+    // Convertir date_naissance au format DateTime si fournie
+    const processedData: any = { ...agentData };
+    if (processedData.date_naissance) {
+      // Si c'est une date seule (YYYY-MM-DD), convertir en DateTime
+      if (typeof processedData.date_naissance === 'string' && processedData.date_naissance.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        processedData.date_naissance = new Date(processedData.date_naissance + 'T00:00:00.000Z');
+      } else {
+        processedData.date_naissance = new Date(processedData.date_naissance);
+      }
+    } else if (processedData.date_naissance === '') {
+      // Si chaîne vide, mettre null
+      processedData.date_naissance = null;
+    }
+
     const agent = await prisma.agent.create({
       data: {
-        ...agentData,
+        ...processedData,
         username,
         password_hash
       }
@@ -1535,6 +1549,19 @@ app.put('/api/agents/:id', async (req, res) => {
     // Mettre à jour le password si fourni
     if (password && password.trim() !== '') {
       updateData.password_hash = await bcrypt.hash(password, 10);
+    }
+
+    // Convertir date_naissance au format DateTime si fournie
+    if (updateData.date_naissance) {
+      // Si c'est une date seule (YYYY-MM-DD), convertir en DateTime
+      if (typeof updateData.date_naissance === 'string' && updateData.date_naissance.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        updateData.date_naissance = new Date(updateData.date_naissance + 'T00:00:00.000Z');
+      } else {
+        updateData.date_naissance = new Date(updateData.date_naissance);
+      }
+    } else if (updateData.date_naissance === '') {
+      // Si chaîne vide, mettre null
+      updateData.date_naissance = null;
     }
     
     const agent = await prisma.agent.update({
