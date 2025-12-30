@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 // Screens
 import LoginScreen from '../screens/LoginScreen';
-import HomeScreen from '../screens/HomeScreen';
+import BottomTabNavigator from './BottomTabNavigator';
 import OrganisationScreen from '../screens/OrganisationScreen';
 import SectionScreen from '../screens/SectionScreen';
 import VillageScreen from '../screens/VillageScreen';
@@ -43,11 +43,14 @@ export default function RootNavigator() {
         />
       ) : (
         <>
+          {/* Navigation principale avec onglets en bas */}
           <Stack.Screen 
-            name="Home" 
-            component={HomeScreen}
-            options={{ title: 'CacaoTrack Agent' }}
+            name="MainTabs" 
+            component={BottomTabNavigator}
+            options={{ headerShown: false }}
           />
+          
+          {/* Écrans modaux accessibles depuis les onglets */}
           <Stack.Screen 
             name="Organisation" 
             component={OrganisationScreen}
