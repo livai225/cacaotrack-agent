@@ -1,14 +1,143 @@
-import React, { useRef } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { View, StyleSheet, Alert, Dimensions } from 'react-native';
 import { Button, Text, Card } from 'react-native-paper';
-import SignatureCanvas from 'react-native-signature-canvas';
+import { WebView } from 'react-native-webview';
+
+const { width } = Dimensions.get('window');
 
 export default function SignatureScreen({ navigation, route }: any) {
-  const signatureRef = useRef<any>(null);
+  const webViewRef = useRef<WebView>(null);
   const { producteurNom } = route.params || {};
 
-  const handleOK = (signature: string) => {
-    // Retourner la signature à l'écran précédent
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+      <style>
+        body {
+          margin: 0;
+          padding: 0;
+          background: #f5f5f5;
+        }
+        #signature-canvas {
+          border: 2px solid #8B4513;
+          background: white;
+          touch-action: none;
+        }
+        .controls {
+          padding: 10px;
+          text-align: center;
+        }
+        button {
+          padding: 10px 20px;
+          margin: 5px;
+          background: #8B4513;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          font-size: 16px;
+        }
+      </style>
+    </head>
+    <body>
+      <canvas id="signature-canvas" width="${width - 40}" height="300"></canvas>
+      <div class="controls">
+        <button onclick="clearCanvas()">Effacer</button>
+      </div>
+      <script>
+        const canvas = document.getElementById('signature-canvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        canvas.addEventListener('touchstart', (e) => {
+          e.preventDefault();
+          const touch = e.touches[0];
+          const rect = canvas.getBoundingClientRect();
+          lastX = touch.clientX - rect.left;
+          lastY = touch.clientY - rect.top;
+          isDrawing = true;
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+          e.preventDefault();
+          if (!isDrawing) return;
+          const touch = e.touches[0];
+          const rect = canvas.getBoundingClientRect();
+          const currentX = touch.clientX - rect.left;
+          const currentY = touch.clientY - rect.top;
+
+          ctx.beginPath();
+          ctx.moveTo(lastX, lastY);
+          ctx.lineTo(currentX, currentY);
+          ctx.stroke();
+
+          lastX = currentX;
+          lastY = currentY;
+        });
+
+        canvas.addEventListener('touchend', (e) => {
+          e.preventDefault();
+          isDrawing = false;
+        });
+
+        canvas.addEventListener('touchcancel', (e) => {
+          e.preventDefault();
+          isDrawing = false;
+        });
+
+        function clearCanvas() {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function getSignature() {
+          return canvas.toDataURL('image/png');
+        }
+
+        window.getSignature = getSignature;
+        window.clearCanvas = clearCanvas;
+      </script>
+    </body>
+    </html>
+  `;
+
+  const handleOK = async () => {
+    try {
+      const signature = await webViewRef.current?.injectJavaScript(`
+        (function() {
+          const canvas = document.getElementById('signature-canvas');
+          const dataURL = canvas.toDataURL('image/png');
+          window.ReactNativeWebView.postMessage(dataURL);
+        })();
+        true;
+      `);
+      
+      // Attendre le message du WebView
+      setTimeout(() => {
+        // Retourner la signature à l'écran précédent
+        navigation.navigate({
+          name: route.params?.returnScreen || 'Collecte',
+          params: {
+            signature_producteur: 'signature_base64_data',
+            date_signature: new Date().toISOString(),
+          },
+          merge: true,
+        });
+      }, 100);
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible d\'enregistrer la signature');
+    }
+  };
+
+  const handleMessage = (event: any) => {
+    const signature = event.nativeEvent.data;
     navigation.navigate({
       name: route.params?.returnScreen || 'Collecte',
       params: {
@@ -19,80 +148,43 @@ export default function SignatureScreen({ navigation, route }: any) {
     });
   };
 
-  const handleClear = () => {
-    signatureRef.current?.clearSignature();
-  };
-
-  const handleEmpty = () => {
-    Alert.alert('Signature vide', 'Veuillez signer avant de valider');
-  };
-
   return (
     <View style={styles.container}>
-      {/* Instructions */}
-      <Card style={styles.instructionsCard}>
+      <Card style={styles.card}>
         <Card.Content>
-          <Text style={styles.title}>
-            Signature du Producteur
-          </Text>
+          <Text style={styles.title}>Signature du Producteur</Text>
           {producteurNom && (
-            <Text style={styles.producteur}>
-              {producteurNom}
-            </Text>
+            <Text style={styles.subtitle}>{producteurNom}</Text>
           )}
-          <Text style={styles.instructions}>
-            Demandez au producteur de signer avec son doigt sur l'écran ci-dessous
-          </Text>
+          
+          <View style={styles.signatureContainer}>
+            <WebView
+              ref={webViewRef}
+              source={{ html: htmlContent }}
+              style={styles.webview}
+              onMessage={handleMessage}
+              javaScriptEnabled={true}
+            />
+          </View>
+
+          <View style={styles.buttonContainer}>
+            <Button
+              mode="contained"
+              onPress={handleOK}
+              style={styles.button}
+            >
+              Valider
+            </Button>
+            <Button
+              mode="outlined"
+              onPress={() => navigation.goBack()}
+              style={styles.button}
+            >
+              Annuler
+            </Button>
+          </View>
         </Card.Content>
       </Card>
-
-      {/* Zone de signature */}
-      <View style={styles.signatureContainer}>
-        <SignatureCanvas
-          ref={signatureRef}
-          onOK={handleOK}
-          onEmpty={handleEmpty}
-          descriptionText=""
-          clearText="Effacer"
-          confirmText="Valider"
-          webStyle={`
-            .m-signature-pad {
-              box-shadow: none;
-              border: 2px dashed #8B4513;
-              border-radius: 8px;
-            }
-            .m-signature-pad--body {
-              border: none;
-            }
-            .m-signature-pad--footer {
-              display: none;
-            }
-          `}
-        />
-      </View>
-
-      {/* Boutons */}
-      <View style={styles.controls}>
-        <Button
-          mode="outlined"
-          icon="eraser"
-          onPress={handleClear}
-          style={styles.button}
-          textColor="#F44336"
-        >
-          Effacer
-        </Button>
-
-        <Button
-          mode="contained"
-          icon="check"
-          onPress={() => signatureRef.current?.readSignature()}
-          style={styles.button}
-          buttonColor="#8B4513"
-        >
-          Valider la Signature
-        </Button>
-      </View>
     </View>
   );
 }
@@ -100,43 +192,38 @@ export default function SignatureScreen({ navigation, route }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#f5f5f5',
+    padding: 16,
   },
-  instructionsCard: {
-    margin: 16,
-    elevation: 2,
+  card: {
+    flex: 1,
   },
   title: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#8B4513',
     marginBottom: 8,
   },
-  producteur: {
+  subtitle: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
-  },
-  instructions: {
-    fontSize: 14,
     color: '#666',
+    marginBottom: 16,
   },
   signatureContainer: {
-    flex: 1,
-    margin: 16,
-    backgroundColor: '#FFF',
+    height: 350,
+    borderWidth: 2,
+    borderColor: '#8B4513',
     borderRadius: 8,
-    elevation: 2,
+    overflow: 'hidden',
+    marginBottom: 16,
   },
-  controls: {
-    padding: 16,
-    backgroundColor: '#FFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
+  webview: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  buttonContainer: {
+    gap: 8,
   },
   button: {
-    marginTop: 8,
+    marginBottom: 8,
   },
 });
-

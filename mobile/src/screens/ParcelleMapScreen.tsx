@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
-import MapView, { Polygon, Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import { View, StyleSheet, Alert, ScrollView } from 'react-native';
 import { Button, Text, Card, FAB } from 'react-native-paper';
-import Geolocation from 'react-native-geolocation-service';
+import * as Location from 'expo-location';
 
 interface Point {
   latitude: number;
@@ -23,290 +22,186 @@ export default function ParcelleMapScreen({ navigation, route }: any) {
   useEffect(() => {
     // Obtenir la position initiale
     getCurrentPosition();
+  }, []);
 
-    // Suivre la position en temps réel
-    const watchId = Geolocation.watchPosition(
-      (position) => {
-        const newPos = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        };
-        setCurrentPosition(newPos);
-
-        // Ajouter automatiquement des points pendant le mapping
-        if (isMapping) {
-          addPoint(newPos);
-        }
-      },
-      (error) => console.error('Erreur GPS:', error),
-      {
-        enableHighAccuracy: true,
-        distanceFilter: 5, // Ajouter un point tous les 5 mètres
-        interval: 1000,
-        fastestInterval: 500,
+  const getCurrentPosition = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission refusée', 'La permission de localisation est nécessaire');
+        return;
       }
-    );
 
-    return () => Geolocation.clearWatch(watchId);
-  }, [isMapping]);
-
-  const getCurrentPosition = () => {
-    Geolocation.getCurrentPosition(
-      (position) => {
-        const pos = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        };
-        setCurrentPosition(pos);
-        setRegion({
-          ...pos,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        });
-      },
-      (error) => {
-        Alert.alert('Erreur GPS', 'Impossible d\'obtenir votre position');
-        console.error(error);
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
-    );
-  };
-
-  const addPoint = (point: Point) => {
-    setPoints((prev) => {
-      // Éviter les doublons trop proches
-      const lastPoint = prev[prev.length - 1];
-      if (lastPoint) {
-        const distance = getDistance(lastPoint, point);
-        if (distance < 5) return prev; // Ignorer si < 5 mètres
-      }
-      return [...prev, point];
-    });
-  };
-
-  const getDistance = (p1: Point, p2: Point): number => {
-    const R = 6371e3; // Rayon de la Terre en mètres
-    const φ1 = (p1.latitude * Math.PI) / 180;
-    const φ2 = (p2.latitude * Math.PI) / 180;
-    const Δφ = ((p2.latitude - p1.latitude) * Math.PI) / 180;
-    const Δλ = ((p2.longitude - p1.longitude) * Math.PI) / 180;
-
-    const a =
-      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    return R * c;
-  };
-
-  const calculateArea = (): number => {
-    if (points.length < 3) return 0;
-
-    // Algorithme Shoelace pour calculer l'aire d'un polygone
-    let area = 0;
-    for (let i = 0; i < points.length; i++) {
-      const j = (i + 1) % points.length;
-      area += points[i].latitude * points[j].longitude;
-      area -= points[j].latitude * points[i].longitude;
+      const location = await Location.getCurrentPositionAsync({});
+      const newPos = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      };
+      setCurrentPosition(newPos);
+      setRegion({
+        ...region,
+        latitude: newPos.latitude,
+        longitude: newPos.longitude,
+      });
+    } catch (error) {
+      console.error('Erreur GPS:', error);
+      Alert.alert('Erreur', 'Impossible d\'obtenir la position GPS');
     }
-    area = Math.abs(area) / 2;
-
-    // Convertir en hectares (approximation)
-    // 1 degré ≈ 111.32 km à l'équateur
-    const areaInSquareMeters = area * 111320 * 111320;
-    const hectares = areaInSquareMeters / 10000;
-
-    return hectares;
   };
 
-  const calculatePerimeter = (): number => {
-    if (points.length < 2) return 0;
-
-    let perimeter = 0;
-    for (let i = 0; i < points.length; i++) {
-      const j = (i + 1) % points.length;
-      perimeter += getDistance(points[i], points[j]);
+  const handleMapPress = (event: any) => {
+    if (isMapping) {
+      const { latitude, longitude } = event.nativeEvent.coordinate;
+      setPoints([...points, { latitude, longitude }]);
     }
-
-    return perimeter;
   };
 
-  const handleStartMapping = () => {
+  const startMapping = () => {
     if (!currentPosition) {
       Alert.alert('Erreur', 'Position GPS non disponible');
       return;
     }
     setIsMapping(true);
-    setPoints([currentPosition]); // Commencer avec la position actuelle
-    Alert.alert(
-      'Mapping démarré',
-      'Marchez autour de la parcelle. Des points seront ajoutés automatiquement.'
-    );
+    setPoints([]);
   };
 
-  const handlePauseMapping = () => {
+  const stopMapping = () => {
     setIsMapping(false);
-    Alert.alert('Mapping en pause', 'Vous pouvez reprendre ou terminer.');
   };
 
-  const handleClearPoints = () => {
-    Alert.alert(
-      'Effacer les points',
-      'Voulez-vous vraiment effacer tous les points ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Effacer',
-          style: 'destructive',
-          onPress: () => {
-            setPoints([]);
-            setIsMapping(false);
-          },
-        },
-      ]
-    );
+  const clearPoints = () => {
+    setPoints([]);
   };
 
-  const handleFinishMapping = () => {
+  const saveMapping = () => {
     if (points.length < 3) {
-      Alert.alert('Erreur', 'Il faut au moins 3 points pour créer une parcelle');
+      Alert.alert('Erreur', 'Au moins 3 points sont nécessaires pour créer une parcelle');
       return;
     }
 
-    const area = calculateArea();
-    const perimeter = calculatePerimeter();
+    // Retourner les points à l'écran précédent
+    navigation.navigate({
+      name: route.params?.returnScreen || 'Parcelle',
+      params: {
+        points_gps: points,
+        superficie_calculee: calculateArea(points),
+      },
+      merge: true,
+    });
+  };
 
-    Alert.alert(
-      'Mapping terminé',
-      `Superficie: ${area.toFixed(2)} ha\nPérimètre: ${perimeter.toFixed(0)} m`,
-      [
-        { text: 'Modifier', style: 'cancel' },
-        {
-          text: 'Enregistrer',
-          onPress: () => {
-            navigation.navigate('Parcelle', {
-              polygone_gps: JSON.stringify(points),
-              superficie_gps: parseFloat(area.toFixed(2)),
-              perimetre: parseFloat(perimeter.toFixed(0)),
-            });
-          },
-        },
-      ]
-    );
+  const calculateArea = (pts: Point[]): number => {
+    // Calcul simplifié de la superficie (formule de Shoelace)
+    if (pts.length < 3) return 0;
+    
+    let area = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const j = (i + 1) % pts.length;
+      area += pts[i].latitude * pts[j].longitude;
+      area -= pts[j].latitude * pts[i].longitude;
+    }
+    area = Math.abs(area) / 2;
+    
+    // Convertir en hectares (approximation)
+    return area * 111.32 * 111.32 / 10000;
   };
 
   return (
     <View style={styles.container}>
-      <MapView
-        provider={PROVIDER_GOOGLE}
-        style={styles.map}
-        region={region}
-        onRegionChangeComplete={setRegion}
-        showsUserLocation
-        showsMyLocationButton
-      >
-        {/* Position actuelle */}
-        {currentPosition && (
-          <Marker
-            coordinate={currentPosition}
-            title="Ma position"
-            pinColor="blue"
-          />
-        )}
-
-        {/* Points enregistrés */}
-        {points.map((point, index) => (
-          <Marker
-            key={index}
-            coordinate={point}
-            title={`Point ${index + 1}`}
-            pinColor="red"
-          />
-        ))}
-
-        {/* Polygone */}
-        {points.length > 2 && (
-          <Polygon
-            coordinates={points}
-            strokeColor="#8B4513"
-            fillColor="rgba(139, 69, 19, 0.3)"
-            strokeWidth={2}
-          />
-        )}
-      </MapView>
-
-      {/* Panneau d'informations */}
-      <Card style={styles.infoCard}>
+      <Card style={styles.card}>
         <Card.Content>
-          <Text style={styles.infoText}>
-            Points enregistrés: <Text style={styles.bold}>{points.length}</Text>
+          <Text style={styles.title}>Cartographie GPS</Text>
+          <Text style={styles.subtitle}>
+            {isMapping ? 'Mode cartographie actif' : 'Prêt à cartographier'}
           </Text>
-          {points.length > 2 && (
-            <>
-              <Text style={styles.infoText}>
-                Superficie: <Text style={styles.bold}>{calculateArea().toFixed(2)} ha</Text>
+          
+          {currentPosition && (
+            <View style={styles.positionInfo}>
+              <Text style={styles.positionText}>
+                Position: {currentPosition.latitude.toFixed(6)}, {currentPosition.longitude.toFixed(6)}
               </Text>
-              <Text style={styles.infoText}>
-                Périmètre: <Text style={styles.bold}>{calculatePerimeter().toFixed(0)} m</Text>
-              </Text>
-            </>
+            </View>
           )}
-          <Text style={[styles.infoText, isMapping && styles.mappingActive]}>
-            {isMapping ? '🟢 Mapping en cours...' : '⚪ Mapping en pause'}
-          </Text>
+
+          {points.length > 0 && (
+            <View style={styles.pointsInfo}>
+              <Text style={styles.pointsText}>
+                {points.length} point{points.length > 1 ? 's' : ''} enregistré{points.length > 1 ? 's' : ''}
+              </Text>
+              {points.length >= 3 && (
+                <Text style={styles.areaText}>
+                  Superficie estimée: {calculateArea(points).toFixed(2)} ha
+                </Text>
+              )}
+            </View>
+          )}
+
+          <ScrollView style={styles.pointsList}>
+            {points.map((point, index) => (
+              <View key={index} style={styles.pointItem}>
+                <Text style={styles.pointText}>
+                  Point {index + 1}: {point.latitude.toFixed(6)}, {point.longitude.toFixed(6)}
+                </Text>
+              </View>
+            ))}
+          </ScrollView>
+
+          <View style={styles.buttonContainer}>
+            {!isMapping ? (
+              <Button
+                mode="contained"
+                onPress={startMapping}
+                style={styles.button}
+                disabled={!currentPosition}
+              >
+                Démarrer la cartographie
+              </Button>
+            ) : (
+              <>
+                <Button
+                  mode="contained"
+                  onPress={stopMapping}
+                  style={styles.button}
+                >
+                  Arrêter
+                </Button>
+                <Button
+                  mode="outlined"
+                  onPress={clearPoints}
+                  style={styles.button}
+                >
+                  Effacer
+                </Button>
+              </>
+            )}
+            
+            {points.length >= 3 && (
+              <Button
+                mode="contained"
+                onPress={saveMapping}
+                style={[styles.button, styles.saveButton]}
+              >
+                Enregistrer ({points.length} points)
+              </Button>
+            )}
+          </View>
+
+          <Button
+            mode="outlined"
+            onPress={() => navigation.goBack()}
+            style={styles.button}
+          >
+            Retour
+          </Button>
         </Card.Content>
       </Card>
 
-      {/* Boutons d'action */}
-      <View style={styles.controls}>
-        {!isMapping ? (
-          <Button
-            mode="contained"
-            icon="play"
-            onPress={handleStartMapping}
-            style={styles.button}
-            buttonColor="#4CAF50"
-          >
-            {points.length === 0 ? 'Démarrer le Mapping' : 'Reprendre'}
-          </Button>
-        ) : (
-          <Button
-            mode="contained"
-            icon="pause"
-            onPress={handlePauseMapping}
-            style={styles.button}
-            buttonColor="#FF9800"
-          >
-            Pause
-          </Button>
-        )}
-
-        {points.length > 0 && (
-          <>
-            <Button
-              mode="outlined"
-              icon="delete"
-              onPress={handleClearPoints}
-              style={styles.button}
-              textColor="#F44336"
-            >
-              Effacer
-            </Button>
-
-            {points.length > 2 && (
-              <Button
-                mode="contained"
-                icon="check"
-                onPress={handleFinishMapping}
-                style={styles.button}
-                buttonColor="#8B4513"
-              >
-                Terminer et Enregistrer
-              </Button>
-            )}
-          </>
-        )}
-      </View>
+      <FAB
+        icon="crosshairs-gps"
+        style={styles.fab}
+        onPress={getCurrentPosition}
+        label="GPS"
+      />
     </View>
   );
 }
@@ -314,37 +209,75 @@ export default function ParcelleMapScreen({ navigation, route }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f5f5f5',
+    padding: 16,
   },
-  map: {
-    flex: 1,
+  card: {
+    marginBottom: 16,
   },
-  infoCard: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    right: 16,
-    elevation: 4,
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 8,
   },
-  infoText: {
+  subtitle: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 16,
+  },
+  positionInfo: {
+    backgroundColor: '#e3f2fd',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  positionText: {
     fontSize: 14,
-    marginVertical: 2,
+    color: '#1976d2',
   },
-  bold: {
+  pointsInfo: {
+    backgroundColor: '#f3e5f5',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  pointsText: {
+    fontSize: 14,
+    color: '#7b1fa2',
     fontWeight: 'bold',
-    color: '#8B4513',
   },
-  mappingActive: {
-    color: '#4CAF50',
-    fontWeight: 'bold',
+  areaText: {
+    fontSize: 14,
+    color: '#7b1fa2',
+    marginTop: 4,
   },
-  controls: {
-    position: 'absolute',
-    bottom: 16,
-    left: 16,
-    right: 16,
+  pointsList: {
+    maxHeight: 200,
+    marginBottom: 16,
+  },
+  pointItem: {
+    backgroundColor: '#fff',
+    padding: 8,
+    borderRadius: 4,
+    marginBottom: 4,
+  },
+  pointText: {
+    fontSize: 12,
+    color: '#333',
+  },
+  buttonContainer: {
+    gap: 8,
   },
   button: {
-    marginTop: 8,
+    marginBottom: 8,
+  },
+  saveButton: {
+    backgroundColor: '#4caf50',
+  },
+  fab: {
+    position: 'absolute',
+    right: 16,
+    bottom: 16,
+    backgroundColor: '#8B4513',
   },
 });
-
