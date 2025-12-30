@@ -1507,14 +1507,26 @@ app.post('/api/agents', async (req, res) => {
     }
     
     console.log('🔄 Après conversion - date_naissance:', processedData.date_naissance, 'type:', typeof processedData.date_naissance);
-    console.log('📤 Données envoyées à Prisma:', JSON.stringify({ ...processedData, username, password_hash: '***' }, null, 2));
+    if (processedData.date_naissance instanceof Date) {
+      console.log('✅ date_naissance est un objet Date:', processedData.date_naissance.toISOString());
+    } else {
+      console.warn('⚠️ date_naissance n\'est PAS un objet Date:', processedData.date_naissance);
+    }
+
+    // Préparer les données pour Prisma (sans JSON.stringify pour préserver les objets Date)
+    const prismaData = {
+      ...processedData,
+      username,
+      password_hash
+    };
+    
+    console.log('📤 Envoi à Prisma - date_naissance type:', typeof prismaData.date_naissance);
+    if (prismaData.date_naissance instanceof Date) {
+      console.log('✅ date_naissance est un Date avant Prisma');
+    }
 
     const agent = await prisma.agent.create({
-      data: {
-        ...processedData,
-        username,
-        password_hash
-      }
+      data: prismaData
     });
 
     // Affecter les régions
