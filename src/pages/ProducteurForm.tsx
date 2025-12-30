@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { generateProducteurCode, calculateAge } from "@/utils/codification";
 import { useState, useEffect } from "react";
 import { api } from "@/services/api";
+import type { Organisation, Section, Village } from "@/types/organisation";
 
 const producteurSchema = z.object({
   // Rattachement
@@ -25,7 +26,7 @@ const producteurSchema = z.object({
   sectionId: z.string().min(1, "Section requise"),
   villageId: z.string().min(1, "Village requis"),
 
-  // Infos gÃ©nÃ©rales
+  // Infos générales
   nom_complet: z.string().min(2, "Nom complet requis"),
   date_naissance: z.string().min(1, "Date de naissance requise"),
   lieu_naissance: z.string().optional(),
@@ -54,21 +55,21 @@ const producteurSchema = z.object({
   puits: z.boolean(),
   riviere_marigot: z.boolean(),
 
-  // Conditions de vie - ElectricitÃ©
+  // Conditions de vie - Électricité
   electricite_reseau: z.boolean(),
   electricite_solaire: z.boolean(),
   electricite_lampe: z.boolean(),
   electricite_aucun: z.boolean(),
 
   // Logement
-  materiaux_mur: z.enum(["Terre battue sÃ©chÃ©e", "Briques/Ciment", "Bois", "Paille/pisÃ©", "MatÃ©riaux modernes"]).optional(),
-  toiture: z.enum(["TÃ´le", "Bambou-Plastique", "Paille-Plastique", "Bambou-Paille"]).optional(),
+  materiaux_mur: z.enum(["Terre battue séchée", "Briques/Ciment", "Bois", "Paille/pisé", "Matériaux modernes"]).optional(),
+  toiture: z.enum(["Tôle", "Bambou-Plastique", "Paille-Plastique", "Bambou-Paille"]).optional(),
 
   // Soins
   soins_plantes_tradi: z.enum(["Toujours", "Souvent", "Jamais"]).optional(),
   soins_dispensaire: z.enum(["Toujours", "Souvent", "Jamais"]).optional(),
 
-  // CrÃ©dit / Epargne
+  // Crédit / Epargne
   interet_compte_bancaire: z.boolean(),
   montant_compte_bancaire: z.number().optional(),
   interet_epargne: z.boolean(),
@@ -80,7 +81,7 @@ const producteurSchema = z.object({
   usage_especes: z.enum(["Peu", "Souvent", "Toujours", "Jamais"]).optional(),
   usage_tontine: z.enum(["Peu", "Souvent", "Toujours", "Jamais"]).optional(),
 
-  // CrÃ©dit Agricole
+  // Crédit Agricole
   credit_intrants: z.boolean(), montant_credit_intrants: z.number().optional(),
   credit_soudure: z.boolean(), montant_credit_soudure: z.number().optional(),
   pret_scolaire: z.boolean(), montant_pret_scolaire: z.number().optional(),
@@ -108,9 +109,9 @@ const producteurSchema = z.object({
 type ProducteurFormData = z.infer<typeof producteurSchema>;
 
 const steps = [
-  { id: 1, name: "Informations GÃ©nÃ©rales", icon: User },
+  { id: 1, name: "Informations Générales", icon: User },
   { id: 2, name: "Conditions de Vie", icon: Home },
-  { id: 3, name: "SantÃ© & Finance", icon: Heart },
+  { id: 3, name: "Santé & Finance", icon: Heart },
   { id: 4, name: "Production Agricole", icon: Sprout },
 ];
 
@@ -122,6 +123,10 @@ export default function ProducteurForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [age, setAge] = useState<number | null>(null);
   const [generatedCode, setGeneratedCode] = useState<string>("---");
+  const [organisations, setOrganisations] = useState<Organisation[]>([]);
+  const [sections, setSections] = useState<Section[]>([]);
+  const [villages, setVillages] = useState<Village[]>([]);
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
   const { register, handleSubmit, formState: { errors }, setValue, watch, reset, trigger } = useForm<ProducteurFormData>({
     resolver: zodResolver(producteurSchema),
@@ -171,6 +176,29 @@ export default function ProducteurForm() {
     }
   });
 
+  // Charger les données (organisations, sections, villages)
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setIsLoadingData(true);
+        const [orgs, secs, vills] = await Promise.all([
+          api.getOrganisations(),
+          api.getSections(),
+          api.getVillages(),
+        ]);
+        setOrganisations(orgs);
+        setSections(secs);
+        setVillages(vills);
+      } catch (error) {
+        console.error("Erreur chargement données:", error);
+        toast.error("Erreur lors du chargement des données");
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+    loadData();
+  }, []);
+
   // Load existing data when editing
   useEffect(() => {
     if (isEdit && id) {
@@ -192,21 +220,57 @@ export default function ProducteurForm() {
     }
   }, [id, isEdit, reset, navigate]);
 
-  // Mise Ã  jour du code gÃ©nÃ©rÃ© en temps rÃ©el
+  // Mise à jour du code généré en temps réel
   const watchedOrg = watch("organisationId");
   const watchedSec = watch("sectionId");
   const watchedVil = watch("villageId");
 
+  // Filtrer les sections par organisation sélectionnée
+  const filteredSections = watchedOrg 
+    ? sections.filter(s => s.id_organisation === watchedOrg)
+    : [];
+
+  // Filtrer les villages par section sélectionnée
+  const filteredVillages = watchedSec
+    ? villages.filter(v => v.id_section === watchedSec)
+    : [];
+
+  // Réinitialiser section et village si l'organisation change
+  useEffect(() => {
+    if (watchedOrg) {
+      setValue("sectionId", "");
+      setValue("villageId", "");
+    }
+  }, [watchedOrg, setValue]);
+
+  // Réinitialiser village si la section change
+  useEffect(() => {
+    if (watchedSec) {
+      setValue("villageId", "");
+    }
+  }, [watchedSec, setValue]);
+
   useEffect(() => {
     if (watchedOrg && watchedSec && watchedVil) {
-      // Extraction des codes (MockÃ©: on prend les 3 premiÃ¨res lettres ou la partie aprÃ¨s le tiret)
-      const org = watchedOrg.split("-")[1] || "ORG"; // Ex: ORG-001 -> 001
-      const sec = watchedSec.split("-")[1] || "SEC";
-      const vil = watchedVil.split("-")[1] || "VIL";
-      // Le numÃ©ro d'ordre serait dÃ©terminÃ© par le backend, ici on simule '001'
-      setGeneratedCode(generateProducteurCode(org, sec, vil, 1));
+      // Récupérer les codes réels depuis les données
+      const org = organisations.find(o => o.id === watchedOrg);
+      const sec = sections.find(s => s.id === watchedSec);
+      const vil = villages.find(v => v.id === watchedVil);
+      
+      if (org && sec && vil) {
+        const orgCode = org.code.includes("-") ? org.code.split("-")[1] : org.code.substring(0, 3).toUpperCase();
+        const secCode = sec.code.includes("-") ? sec.code.split("-")[1] : sec.code.substring(0, 3).toUpperCase();
+        const vilCode = vil.nom.substring(0, 3).toUpperCase();
+        // Le numéro d'ordre serait déterminé par le backend, ici on simule '001'
+        const code = generateProducteurCode(orgCode, secCode, vilCode, "001");
+        setGeneratedCode(code);
+      } else {
+        setGeneratedCode("---");
+      }
+    } else {
+      setGeneratedCode("---");
     }
-  }, [watchedOrg, watchedSec, watchedVil]);
+  }, [watchedOrg, watchedSec, watchedVil, organisations, sections, villages]);
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const date = e.target.value;
@@ -230,7 +294,7 @@ export default function ProducteurForm() {
         // Pas de validation obligatoire pour les conditions de vie
         break;
       case 3:
-        // Pas de validation obligatoire pour santÃ© & finance
+        // Pas de validation obligatoire pour santé & finance
         break;
       case 4:
         fieldsToValidate = ["cacao_nb_plantations", "cacao_superficie", "cacao_production"];
@@ -267,50 +331,92 @@ export default function ProducteurForm() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label>Organisation *</Label>
-                <Select onValueChange={(v) => setValue("organisationId", v)} value={watch("organisationId")}>
-                  <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ORG-001">SCOOP-CA Divo</SelectItem>
-                    <SelectItem value="ORG-002">CAVALLY COOP</SelectItem>
-                  </SelectContent>
-                </Select>
+                {isLoadingData ? (
+                  <div className="flex items-center gap-2 p-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm text-muted-foreground">Chargement...</span>
+                  </div>
+                ) : (
+                  <Select onValueChange={(v) => setValue("organisationId", v)} value={watch("organisationId")}>
+                    <SelectTrigger><SelectValue placeholder="Choisir une organisation..." /></SelectTrigger>
+                    <SelectContent>
+                      {organisations.filter(o => o.statut === 'actif').map((org) => (
+                        <SelectItem key={org.id} value={org.id}>
+                          {org.nom} ({org.code})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
                 {errors.organisationId && <p className="text-destructive text-sm">{errors.organisationId.message}</p>}
               </div>
               <div>
                 <Label>Section *</Label>
-                <Select onValueChange={(v) => setValue("sectionId", v)} value={watch("sectionId")}>
-                  <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="SEC-001">Section Nord</SelectItem>
-                    <SelectItem value="SEC-002">Section Sud</SelectItem>
-                  </SelectContent>
-                </Select>
+                {isLoadingData ? (
+                  <div className="flex items-center gap-2 p-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm text-muted-foreground">Chargement...</span>
+                  </div>
+                ) : (
+                  <Select 
+                    onValueChange={(v) => setValue("sectionId", v)} 
+                    value={watch("sectionId")}
+                    disabled={!watchedOrg}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={watchedOrg ? "Choisir une section..." : "Sélectionnez d'abord une organisation"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredSections.map((sec) => (
+                        <SelectItem key={sec.id} value={sec.id}>
+                          {sec.nom} ({sec.code})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
                 {errors.sectionId && <p className="text-destructive text-sm">{errors.sectionId.message}</p>}
               </div>
               <div>
                 <Label>Village *</Label>
-                <Select onValueChange={(v) => setValue("villageId", v)} value={watch("villageId")}>
-                  <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="VIL-001">Village Centre</SelectItem>
-                    <SelectItem value="VIL-002">Campement A</SelectItem>
-                  </SelectContent>
-                </Select>
+                {isLoadingData ? (
+                  <div className="flex items-center gap-2 p-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm text-muted-foreground">Chargement...</span>
+                  </div>
+                ) : (
+                  <Select 
+                    onValueChange={(v) => setValue("villageId", v)} 
+                    value={watch("villageId")}
+                    disabled={!watchedSec}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={watchedSec ? "Choisir un village..." : "Sélectionnez d'abord une section"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredVillages.map((vil) => (
+                        <SelectItem key={vil.id} value={vil.id}>
+                          {vil.nom} ({vil.type})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
                 {errors.villageId && <p className="text-destructive text-sm">{errors.villageId.message}</p>}
               </div>
             </div>
 
-            {/* Code GÃ©nÃ©rÃ© */}
+            {/* Code Généré */}
             {watchedOrg && watchedSec && watchedVil && (
               <div className="p-3 bg-muted/50 rounded-md border border-dashed border-primary">
-                <span className="text-sm text-muted-foreground block mb-1">Code Producteur GÃ©nÃ©rÃ© :</span>
+                <span className="text-sm text-muted-foreground block mb-1">Code Producteur Généré :</span>
                 <span className="text-xl font-mono font-bold text-primary tracking-wider">{generatedCode}</span>
               </div>
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label>Nom et PrÃ©noms *</Label>
+                <Label>Nom et Prénoms *</Label>
                 <Input {...register("nom_complet")} className="uppercase" placeholder="Ex: KOUASSI JEAN" />
                 {errors.nom_complet && <p className="text-destructive text-sm">{errors.nom_complet.message}</p>}
               </div>
@@ -332,7 +438,7 @@ export default function ProducteurForm() {
               </div>
               <div>
                 <MultiPhone
-                  label="NumÃ©ros de tÃ©lÃ©phone"
+                  label="Numéros de téléphone"
                   values={watch("telephones") || []}
                   onChange={(vals) => setValue("telephones", vals)}
                 />
@@ -340,7 +446,7 @@ export default function ProducteurForm() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <PhotoCapture label="Photo PiÃ¨ce d'identitÃ©" value={watch("photo_cni")} onChange={(v) => setValue("photo_cni", v)} />
+              <PhotoCapture label="Photo Pièce d'identité" value={watch("photo_cni")} onChange={(v) => setValue("photo_cni", v)} />
               <PhotoCapture label="Photo Planteur" value={watch("photo_planteur")} onChange={(v) => setValue("photo_planteur", v)} />
             </div>
 
@@ -350,9 +456,9 @@ export default function ProducteurForm() {
                 <div><Label>Femmes</Label><Input type="number" {...register("nb_femmes", { valueAsNumber: true })} /></div>
                 <div><Label>Enfants Total</Label><Input type="number" {...register("nb_enfants", { valueAsNumber: true })} /></div>
                 <div><Label>Filles</Label><Input type="number" {...register("nb_filles", { valueAsNumber: true })} /></div>
-                <div><Label>GarÃ§ons</Label><Input type="number" {...register("nb_garcons", { valueAsNumber: true })} /></div>
+                <div><Label>Garçons</Label><Input type="number" {...register("nb_garcons", { valueAsNumber: true })} /></div>
                 <div><Label>Moins de 5 ans</Label><Input type="number" {...register("nb_moins_5_ans", { valueAsNumber: true })} /></div>
-                <div><Label>ScolarisÃ©s Total</Label><Input type="number" {...register("nb_enfants_scolarises", { valueAsNumber: true })} /></div>
+                <div><Label>Scolarisés Total</Label><Input type="number" {...register("nb_enfants_scolarises", { valueAsNumber: true })} /></div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 bg-muted/20 p-3 rounded">
@@ -360,7 +466,7 @@ export default function ProducteurForm() {
                   <Label className="font-semibold block mb-2">Primaire</Label>
                   <div className="flex gap-2">
                     <div><Label className="text-xs">Filles</Label><Input type="number" {...register("scolarises_primaire_filles", { valueAsNumber: true })} /></div>
-                    <div><Label className="text-xs">GarÃ§ons</Label><Input type="number" {...register("scolarises_primaire_garcons", { valueAsNumber: true })} /></div>
+                    <div><Label className="text-xs">Garçons</Label><Input type="number" {...register("scolarises_primaire_garcons", { valueAsNumber: true })} /></div>
                   </div>
                 </div>
                 <div>
@@ -391,13 +497,13 @@ export default function ProducteurForm() {
                   <div className="flex items-center gap-2"><Checkbox checked={watch("eau_courante")} onCheckedChange={(c) => setValue("eau_courante", !!c)} /><Label>Eau courante</Label></div>
                   <div className="flex items-center gap-2"><Checkbox checked={watch("pompe_hydraulique")} onCheckedChange={(c) => setValue("pompe_hydraulique", !!c)} /><Label>Pompe hydraulique</Label></div>
                   <div className="flex items-center gap-2"><Checkbox checked={watch("puits")} onCheckedChange={(c) => setValue("puits", !!c)} /><Label>Puits</Label></div>
-                  <div className="flex items-center gap-2"><Checkbox checked={watch("riviere_marigot")} onCheckedChange={(c) => setValue("riviere_marigot", !!c)} /><Label>RiviÃ¨re / Marigot</Label></div>
+                  <div className="flex items-center gap-2"><Checkbox checked={watch("riviere_marigot")} onCheckedChange={(c) => setValue("riviere_marigot", !!c)} /><Label>Rivière / Marigot</Label></div>
                 </div>
               </div>
               <div>
-                <h3 className="font-semibold mb-2">ElectricitÃ©</h3>
+                <h3 className="font-semibold mb-2">Électricité</h3>
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2"><Checkbox checked={watch("electricite_reseau")} onCheckedChange={(c) => setValue("electricite_reseau", !!c)} /><Label>RÃ©seau national</Label></div>
+                  <div className="flex items-center gap-2"><Checkbox checked={watch("electricite_reseau")} onCheckedChange={(c) => setValue("electricite_reseau", !!c)} /><Label>Réseau national</Label></div>
                   <div className="flex items-center gap-2"><Checkbox checked={watch("electricite_solaire")} onCheckedChange={(c) => setValue("electricite_solaire", !!c)} /><Label>Solaire</Label></div>
                   <div className="flex items-center gap-2"><Checkbox checked={watch("electricite_lampe")} onCheckedChange={(c) => setValue("electricite_lampe", !!c)} /><Label>Lampe</Label></div>
                   <div className="flex items-center gap-2"><Checkbox checked={watch("electricite_aucun")} onCheckedChange={(c) => setValue("electricite_aucun", !!c)} /><Label>Pas du tout</Label></div>
@@ -407,15 +513,15 @@ export default function ProducteurForm() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t pt-4">
               <div>
-                <Label>MatÃ©riaux de construction</Label>
+                <Label>Matériaux de construction</Label>
                 <Select onValueChange={(v) => setValue("materiaux_mur", v as any)} value={watch("materiaux_mur")}>
                   <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Terre battue sÃ©chÃ©e">Terre battue sÃ©chÃ©e</SelectItem>
+                    <SelectItem value="Terre battue séchée">Terre battue séchée</SelectItem>
                     <SelectItem value="Briques/Ciment">Briques/Ciment</SelectItem>
                     <SelectItem value="Bois">Bois</SelectItem>
-                    <SelectItem value="Paille/pisÃ©">Paille/pisÃ©</SelectItem>
-                    <SelectItem value="MatÃ©riaux modernes">MatÃ©riaux modernes</SelectItem>
+                    <SelectItem value="Paille/pisé">Paille/pisé</SelectItem>
+                    <SelectItem value="Matériaux modernes">Matériaux modernes</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -424,7 +530,7 @@ export default function ProducteurForm() {
                 <Select onValueChange={(v) => setValue("toiture", v as any)} value={watch("toiture")}>
                   <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="TÃ´le">TÃ´le</SelectItem>
+                    <SelectItem value="Tôle">Tôle</SelectItem>
                     <SelectItem value="Bambou-Plastique">Bambou-Plastique</SelectItem>
                     <SelectItem value="Paille-Plastique">Paille-Plastique</SelectItem>
                     <SelectItem value="Bambou-Paille">Bambou-Paille</SelectItem>
@@ -443,36 +549,36 @@ export default function ProducteurForm() {
             </div>
 
             <div className="border-t pt-4">
-              <h3 className="font-semibold mb-3">Moyens utilisÃ©s</h3>
+              <h3 className="font-semibold mb-3">Moyens utilisés</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {renderRadioGroup("usage_mobile_money", "Mobile Money", ["Peu", "Souvent", "Toujours", "Jamais"])}
                 {renderRadioGroup("usage_virement", "Virement Bancaire", ["Peu", "Souvent", "Toujours", "Jamais"])}
-                {renderRadioGroup("usage_especes", "EspÃ¨ces", ["Peu", "Souvent", "Toujours", "Jamais"])}
+                {renderRadioGroup("usage_especes", "Espèces", ["Peu", "Souvent", "Toujours", "Jamais"])}
                 {renderRadioGroup("usage_tontine", "Tontine commune", ["Peu", "Souvent", "Toujours", "Jamais"])}
               </div>
             </div>
 
             <div className="border-t pt-4">
-              <h3 className="font-semibold mb-3">CrÃ©dit & Epargne</h3>
+              <h3 className="font-semibold mb-3">Crédit & Epargne</h3>
               <div className="space-y-2">
-                {renderCreditField("interet_compte_bancaire", "IntÃ©ressÃ© par un compte bancaire", "montant_compte_bancaire")}
-                {renderCreditField("interet_epargne", "IntÃ©ressÃ© par une Ã©pargne", "montant_epargne")}
+                {renderCreditField("interet_compte_bancaire", "Intéressé par un compte bancaire", "montant_compte_bancaire")}
+                {renderCreditField("interet_epargne", "Intéressé par une épargne", "montant_epargne")}
               </div>
             </div>
 
             <div className="border-t pt-4">
-              <h3 className="font-semibold mb-3">CrÃ©dit Agricole (IntÃ©rÃªt)</h3>
+              <h3 className="font-semibold mb-3">Crédit Agricole (Intérêt)</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {renderCreditField("credit_intrants", "CrÃ©dit intrants agricoles", "montant_credit_intrants")}
-                {renderCreditField("credit_soudure", "CrÃ©dit de soudure", "montant_credit_soudure")}
-                {renderCreditField("pret_scolaire", "PrÃªt scolaire", "montant_pret_scolaire")}
-                {renderCreditField("credit_acces_intrants", "CrÃ©dit accÃ¨s aux intrants", "montant_credit_acces_intrants")}
-                {renderCreditField("credit_biens_conso", "CrÃ©dit biens consommation", "montant_credit_biens_conso")}
+                {renderCreditField("credit_intrants", "Crédit intrants agricoles", "montant_credit_intrants")}
+                {renderCreditField("credit_soudure", "Crédit de soudure", "montant_credit_soudure")}
+                {renderCreditField("pret_scolaire", "Prêt scolaire", "montant_pret_scolaire")}
+                {renderCreditField("credit_acces_intrants", "Crédit accès aux intrants", "montant_credit_acces_intrants")}
+                {renderCreditField("credit_biens_conso", "Crédit biens consommation", "montant_credit_biens_conso")}
                 {renderCreditField("credit_assurance_maladie", "Assurance maladie", "montant_credit_assurance_maladie")}
                 {renderCreditField("credit_assurance_agricole", "Assurance agricole", "montant_credit_assurance_agricole")}
                 {renderCreditField("credit_assurance_retraite", "Assurance retraite", "montant_credit_assurance_retraite")}
                 {renderCreditField("credit_conseil_agricole", "Conseil agricole", "montant_credit_conseil_agricole")}
-                {renderCreditField("credit_rehabilitation", "CrÃ©dit rÃ©habilitation", "montant_credit_rehabilitation")}
+                {renderCreditField("credit_rehabilitation", "Crédit réhabilitation", "montant_credit_rehabilitation")}
               </div>
             </div>
           </div>
@@ -480,7 +586,7 @@ export default function ProducteurForm() {
       case 4:
         return (
           <div className="space-y-6">
-            {/* Cacao (Toujours prÃ©sent) */}
+            {/* Cacao (Toujours présent) */}
             <div className="border p-4 rounded-lg space-y-4 bg-muted/10">
               <h3 className="font-bold text-lg">Cacao</h3>
               <div className="grid grid-cols-3 gap-4">
@@ -518,18 +624,33 @@ export default function ProducteurForm() {
   const onSubmit = async (data: ProducteurFormData) => {
     setIsLoading(true);
     try {
+      // Convertir les noms de champs du formulaire vers ceux attendus par l'API
+      const producteurData = {
+        ...data,
+        id_organisation: data.organisationId,
+        id_section: data.sectionId,
+        id_village: data.villageId,
+        code: generatedCode !== "---" ? generatedCode : undefined,
+      };
+      
+      // Supprimer les anciens noms de champs
+      delete (producteurData as any).organisationId;
+      delete (producteurData as any).sectionId;
+      delete (producteurData as any).villageId;
+
       if (isEdit && id) {
-        await api.updateProducteur(id, data);
-        toast.success("Producteur mis Ã  jour avec succÃ¨s");
+        await api.updateProducteur(id, producteurData);
+        toast.success("Producteur mis à jour avec succès");
         navigate(`/producteurs/${id}`);
       } else {
-        console.log("Producteur crÃ©Ã©:", { code: generatedCode, age, ...data });
-        toast.success(`Producteur ${generatedCode} enregistrÃ© avec succÃ¨s`);
+        console.log("Producteur créé:", { code: generatedCode, age, ...producteurData });
+        await api.createProducteur(producteurData);
+        toast.success(`Producteur ${generatedCode} enregistré avec succès`);
         navigate("/producteurs");
       }
     } catch (error) {
       console.error("Error saving producteur:", error);
-      toast.error(isEdit ? "Erreur lors de la mise Ã  jour" : "Erreur lors de l'enregistrement");
+      toast.error(isEdit ? "Erreur lors de la mise à jour" : "Erreur lors de l'enregistrement");
     } finally {
       setIsLoading(false);
     }
@@ -557,7 +678,7 @@ export default function ProducteurForm() {
       </div>
       {watch(name as any) && (
         <div className="flex items-center gap-2 flex-1 animate-in fade-in slide-in-from-left-5">
-          <Label>Montant souhaitÃ©:</Label>
+          <Label>Montant souhaité:</Label>
           <Input
             type="number"
             className="w-40"
@@ -602,19 +723,19 @@ export default function ProducteurForm() {
         </Button>
         <div>
           <h1 className="text-3xl font-bold text-foreground">{isEdit ? "Modifier Producteur" : "Nouveau Producteur"}</h1>
-          <p className="text-muted-foreground">Saisie dÃ©taillÃ©e du profil producteur</p>
+          <p className="text-muted-foreground">Saisie détaillée du profil producteur</p>
         </div>
       </div>
 
       {/* Instructions (#11) */}
       <Alert className="bg-blue-50 border-blue-200 text-blue-800">
         <Info className="h-4 w-4" />
-        <AlertTitle>Instructions aux EnquÃªteurs</AlertTitle>
+        <AlertTitle>Instructions aux Enquêteurs</AlertTitle>
         <AlertDescription>
-          1. VÃ©rifiez que vous Ãªtes dans le bon village avant de commencer.<br />
-          2. Demandez la piÃ¨ce d'identitÃ© du producteur pour saisir le nom exact.<br />
-          3. Prenez des photos claires et bien cadrÃ©es.<br />
-          4. Tous les champs marquÃ©s d'un astÃ©risque (*) sont obligatoires.
+          1. Vérifiez que vous êtes dans le bon village avant de commencer.<br />
+          2. Demandez la pièce d'identité du producteur pour saisir le nom exact.<br />
+          3. Prenez des photos claires et bien cadrées.<br />
+          4. Tous les champs marqués d'un astérisque (*) sont obligatoires.
         </AlertDescription>
       </Alert>
 

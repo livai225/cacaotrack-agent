@@ -7,6 +7,7 @@ import { Search, Plus, Filter, Building2, Users, Loader2, Trash2 } from "lucide-
 import { Link, useNavigate } from "react-router-dom";
 import type { Organisation } from "@/types/organisation";
 import { api } from "@/services/api";
+import { toast } from "sonner";
 
 export default function Organisations() {
   const navigate = useNavigate();
@@ -18,10 +19,13 @@ export default function Organisations() {
   useEffect(() => {
     const loadData = async () => {
       try {
+        setIsLoading(true);
         const data = await api.getOrganisations();
+        console.log("Organisations chargées:", data.length, data);
         setOrganisations(data);
       } catch (error) {
         console.error("Erreur chargement organisations:", error);
+        toast.error("Erreur lors du chargement des organisations");
       } finally {
         setIsLoading(false);
       }

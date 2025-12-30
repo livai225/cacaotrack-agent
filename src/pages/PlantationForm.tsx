@@ -25,7 +25,7 @@ const frequencesConseil = ["Jamais", "01 fois par an", "01 fois par semestre", "
 const parcelleSchema = z.object({
   id_producteur: z.string().min(1, "Producteur requis"),
 
-  // Infos GÃ©nÃ©rales
+  // Infos Générales
   age_plantation: z.number().min(0),
   superficie_declaree: z.number().min(0),
   superficie_reelle: z.number().optional(),
@@ -111,10 +111,10 @@ const parcelleSchema = z.object({
 type ParcelleFormData = z.infer<typeof parcelleSchema>;
 
 const steps = [
-  { id: 1, name: "Informations GÃ©nÃ©rales", icon: MapPin },
-  { id: 2, name: "SantÃ© de la Plantation", icon: Heart },
+  { id: 1, name: "Informations Générales", icon: MapPin },
+  { id: 2, name: "Santé de la Plantation", icon: Heart },
   { id: 3, name: "Pratiques Agricoles", icon: Sprout },
-  { id: 4, name: "Ã‰quipements", icon: Wrench },
+  { id: 4, name: "Équipements", icon: Wrench },
   { id: 5, name: "Commercialisation", icon: ShoppingCart },
 ];
 
@@ -201,13 +201,13 @@ export default function ParcelleForm() {
         fieldsToValidate = ["id_producteur", "age_plantation", "superficie_declaree", "production_declaree"];
         break;
       case 2:
-        // Pas de validation obligatoire pour la santÃ©
+        // Pas de validation obligatoire pour la santé
         break;
       case 3:
         // Pas de validation obligatoire pour les pratiques
         break;
       case 4:
-        // Pas de validation obligatoire pour les Ã©quipements
+        // Pas de validation obligatoire pour les équipements
         break;
       case 5:
         // Pas de validation obligatoire pour la commercialisation
@@ -320,9 +320,9 @@ export default function ParcelleForm() {
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label>Producteur PropriÃ©taire *</Label>
+                <Label>Producteur Propriétaire *</Label>
                 <Select onValueChange={(v) => setValue("id_producteur", v)} value={watch("id_producteur")}>
-                  <SelectTrigger><SelectValue placeholder="SÃ©lectionner un producteur..." /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Sélectionner un producteur..." /></SelectTrigger>
                   <SelectContent>
                     {producteurs.map((prod) => (
                       <SelectItem key={prod.id} value={prod.id}>{prod.nom_complet}</SelectItem>
@@ -332,22 +332,22 @@ export default function ParcelleForm() {
                 {errors.id_producteur && <p className="text-destructive text-sm">Requis</p>}
               </div>
               <div>
-                <Label>Ã‚ge de la plantation (annÃ©es)</Label>
+                <Label>Âge de la plantation (années)</Label>
                 <Input type="number" {...register("age_plantation", { valueAsNumber: true })} />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <Label>Superficie DÃ©clarÃ©e (Ha) *</Label>
+                <Label>Superficie Déclarée (Ha) *</Label>
                 <Input type="number" step="0.01" {...register("superficie_declaree", { valueAsNumber: true })} />
               </div>
               <div>
-                <Label>Superficie RÃ©elle GPS (Ha)</Label>
+                <Label>Superficie Réelle GPS (Ha)</Label>
                 <Input type="number" step="0.01" {...register("superficie_reelle", { valueAsNumber: true })} />
               </div>
               <div>
-                <Label>Production DÃ©clarÃ©e (T) *</Label>
+                <Label>Production Déclarée (T) *</Label>
                 <Input type="number" step="0.01" {...register("production_declaree", { valueAsNumber: true })} />
               </div>
             </div>
