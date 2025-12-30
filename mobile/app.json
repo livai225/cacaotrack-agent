@@ -37,12 +37,6 @@
     "plugins": [
       "expo-location",
       "expo-image-picker"
-    ],
-    "extra": {
-      "eas": {
-        "projectId": "febb014b-2271-4040-8865-b177815297dd"
-      }
-    },
-    "owner": "livai"
+    ]
   }
 }
