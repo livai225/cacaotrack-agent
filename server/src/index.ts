@@ -1477,14 +1477,25 @@ app.post('/api/agents', async (req, res) => {
     // Convertir date_naissance au format DateTime si fournie
     const processedData: any = { ...agentData };
     if (processedData.date_naissance) {
-      // Si c'est une date seule (YYYY-MM-DD), convertir en DateTime
-      if (typeof processedData.date_naissance === 'string' && processedData.date_naissance.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        processedData.date_naissance = new Date(processedData.date_naissance + 'T00:00:00.000Z');
+      const dateStr = String(processedData.date_naissance).trim();
+      if (dateStr !== '') {
+        // Si c'est une date seule (YYYY-MM-DD), ajouter l'heure
+        if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          processedData.date_naissance = new Date(dateStr + 'T00:00:00.000Z');
+        } else {
+          processedData.date_naissance = new Date(dateStr);
+        }
+        // Vérifier que la date est valide
+        if (isNaN(processedData.date_naissance.getTime())) {
+          console.warn('⚠️ Date invalide:', dateStr, '-> null');
+          processedData.date_naissance = null;
+        } else {
+          console.log('✅ Date convertie:', dateStr, '->', processedData.date_naissance.toISOString());
+        }
       } else {
-        processedData.date_naissance = new Date(processedData.date_naissance);
+        processedData.date_naissance = null;
       }
-    } else if (processedData.date_naissance === '') {
-      // Si chaîne vide, mettre null
+    } else {
       processedData.date_naissance = null;
     }
 
@@ -1552,15 +1563,21 @@ app.put('/api/agents/:id', async (req, res) => {
     }
 
     // Convertir date_naissance au format DateTime si fournie
-    if (updateData.date_naissance) {
-      // Si c'est une date seule (YYYY-MM-DD), convertir en DateTime
-      if (typeof updateData.date_naissance === 'string' && updateData.date_naissance.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        updateData.date_naissance = new Date(updateData.date_naissance + 'T00:00:00.000Z');
+    if (updateData.date_naissance && updateData.date_naissance.trim && updateData.date_naissance.trim() !== '') {
+      // Convertir la date en objet Date
+      const dateStr = updateData.date_naissance;
+      // Si c'est une date seule (YYYY-MM-DD), ajouter l'heure
+      if (typeof dateStr === 'string' && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        updateData.date_naissance = new Date(dateStr + 'T00:00:00.000Z');
       } else {
-        updateData.date_naissance = new Date(updateData.date_naissance);
+        updateData.date_naissance = new Date(dateStr);
       }
-    } else if (updateData.date_naissance === '') {
-      // Si chaîne vide, mettre null
+      // Vérifier que la date est valide
+      if (isNaN(updateData.date_naissance.getTime())) {
+        updateData.date_naissance = null;
+      }
+    } else {
+      // Si vide ou undefined, mettre null
       updateData.date_naissance = null;
     }
     
