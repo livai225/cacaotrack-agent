@@ -164,14 +164,14 @@ export default function CollecteScreen({ navigation, route }: any) {
       if (isOnline) {
         await apiService.createOperation(data);
         Alert.alert('Succès', 'Collecte créée avec succès', [
-          { text: 'OK', onPress: () => navigation.navigate('MainTabs', { screen: 'Récoltes' }) }
+          { text: 'OK', onPress: () => navigation.navigate('MainTabs') }
         ]);
       } else {
         await savePending('operation', data);
         Alert.alert(
           'Hors ligne',
           'Collecte sauvegardée pour synchronisation.',
-          [{ text: 'OK', onPress: () => navigation.navigate('MainTabs', { screen: 'Récoltes' }) }]
+          [{ text: 'OK', onPress: () => navigation.navigate('MainTabs') }]
         );
       }
     } catch (error: any) {
