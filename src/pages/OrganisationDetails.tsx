@@ -109,14 +109,22 @@ export default function OrganisationDetails() {
           <CardContent className="space-y-4">
             <div className="p-3 bg-muted/20 rounded">
               <p className="text-xs uppercase text-muted-foreground font-bold">Président</p>
-              <p className="text-lg font-medium">{org.president_nom}</p>
-              <p className="text-sm text-muted-foreground">{org.president_contact.join(', ')}</p>
+              <p className="text-lg font-medium">{org.president_nom || 'Non renseigné'}</p>
+              <p className="text-sm text-muted-foreground">
+                {org.president_contact && org.president_contact.length > 0 
+                  ? org.president_contact.join(', ') 
+                  : 'Aucun contact'}
+              </p>
             </div>
             {org.secretaire_nom && (
               <div className="p-3 bg-muted/20 rounded">
                 <p className="text-xs uppercase text-muted-foreground font-bold">Secrétaire</p>
                 <p className="text-lg font-medium">{org.secretaire_nom}</p>
-                <p className="text-sm text-muted-foreground">{org.secretaire_contact?.join(', ')}</p>
+                <p className="text-sm text-muted-foreground">
+                  {org.secretaire_contact && org.secretaire_contact.length > 0 
+                    ? org.secretaire_contact.join(', ') 
+                    : 'Aucun contact'}
+                </p>
               </div>
             )}
           </CardContent>

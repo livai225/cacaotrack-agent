@@ -31,6 +31,8 @@ const agentSchema = z.object({
   numero_piece: z.string().optional(),
   photo: z.string().optional(),
   regions: z.array(z.string()).min(1, "Au moins une région requise"),
+  username: z.string().min(3, "Username doit contenir au moins 3 caractères").optional(),
+  password: z.string().min(6, "Mot de passe doit contenir au moins 6 caractères").optional(),
 });
 
 type AgentFormData = z.infer<typeof agentSchema>;
@@ -47,6 +49,7 @@ export default function AgentForm() {
   const isEdit = !!id;
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingRegions, setIsLoadingRegions] = useState(false);
   const [regions, setRegions] = useState<Region[]>([]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [searchRegion, setSearchRegion] = useState("");
@@ -76,11 +79,21 @@ export default function AgentForm() {
 
   const loadRegions = async () => {
     try {
+      setIsLoadingRegions(true);
       const data = await agentService.getRegions();
-      setRegions(data);
+      console.log("Régions chargées:", data);
+      // S'assurer que les régions ont bien la structure attendue
+      const regionsList = Array.isArray(data) ? data : [];
+      setRegions(regionsList);
+      if (regionsList.length === 0) {
+        toast.warning("Aucune région disponible. Créez d'abord des régions.");
+      }
     } catch (error) {
       console.error("Erreur chargement régions:", error);
       toast.error("Impossible de charger les régions");
+      setRegions([]);
+    } finally {
+      setIsLoadingRegions(false);
     }
   };
 
@@ -100,6 +113,7 @@ export default function AgentForm() {
       setValue("type_piece", agent.type_piece || "");
       setValue("numero_piece", agent.numero_piece || "");
       setValue("photo", agent.photo || "");
+      setValue("username", (agent as any).username || "");
       
       if (agent.regions) {
         const regionIds = agent.regions.map((ar: any) => ar.id_region);
@@ -121,8 +135,12 @@ export default function AgentForm() {
         await agentService.updateAgent(id!, data);
         toast.success("Agent modifié avec succès");
       } else {
-        await agentService.createAgent(data);
-        toast.success("Agent créé avec succès");
+        const createdAgent = await agentService.createAgent(data);
+        const username = createdAgent.username || data.username || "généré automatiquement";
+        toast.success(
+          `Agent créé avec succès ! Username: ${username}, Password: ${data.password ? "personnalisé" : "password123"}`,
+          { duration: 5000 }
+        );
       }
       navigate("/agents");
     } catch (error: any) {
@@ -228,6 +246,49 @@ export default function AgentForm() {
                 value={watch("photo")}
                 onChange={v => setValue("photo", v)}
               />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Username (pour connexion mobile) {!isEdit && "(optionnel)"}</Label>
+                  <Input 
+                    {...register("username")} 
+                    placeholder="Ex: agent001" 
+                    autoComplete="username"
+                    disabled={isEdit}
+                  />
+                  {errors.username && <p className="text-sm text-destructive mt-1">{errors.username.message}</p>}
+                  {!isEdit && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Laissé vide = généré automatiquement à partir du code
+                    </p>
+                  )}
+                  {isEdit && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Le username ne peut pas être modifié
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <Label>Mot de passe (pour connexion mobile) {!isEdit && "(optionnel)"}</Label>
+                  <Input 
+                    type="password"
+                    {...register("password")} 
+                    placeholder={isEdit ? "Laisser vide pour ne pas changer" : "Min. 6 caractères"} 
+                    autoComplete={isEdit ? "current-password" : "new-password"}
+                  />
+                  {errors.password && <p className="text-sm text-destructive mt-1">{errors.password.message}</p>}
+                  {!isEdit && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Laissé vide = mot de passe par défaut: "password123"
+                    </p>
+                  )}
+                  {isEdit && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Remplir uniquement pour changer le mot de passe
+                    </p>
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
         );
@@ -303,42 +364,55 @@ export default function AgentForm() {
                 )}
               </div>
 
-              <div className="max-h-96 overflow-y-auto border rounded-lg p-4">
-                {filteredRegions.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">
-                    Aucune région trouvée pour "{searchRegion}"
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {filteredRegions.map((region) => (
-                    <div 
-                      key={region.id} 
-                      className="flex items-center gap-2 hover:bg-muted/50 p-2 rounded transition-colors"
-                    >
-                      <Checkbox
-                        id={`region-${region.id}`}
-                        checked={selectedRegions.includes(region.id)}
-                        onCheckedChange={() => toggleRegion(region.id)}
-                      />
-                      <Label 
-                        htmlFor={`region-${region.id}`} 
-                        className="cursor-pointer text-sm flex-1"
-                      >
-                        {region.nom}
-                      </Label>
-                    </div>
-                    ))}
+              {isLoadingRegions ? (
+                <div className="flex justify-center items-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  <span className="ml-2 text-muted-foreground">Chargement des régions...</span>
+                </div>
+              ) : (
+                <>
+                  <div className="max-h-96 overflow-y-auto border rounded-lg p-4">
+                    {filteredRegions.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-8">
+                        {searchRegion ? (
+                          <>Aucune région trouvée pour "{searchRegion}"</>
+                        ) : (
+                          <>Aucune région disponible. Créez d'abord des régions.</>
+                        )}
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {filteredRegions.map((region) => (
+                        <div 
+                          key={region.id} 
+                          className="flex items-center gap-2 hover:bg-muted/50 p-2 rounded transition-colors"
+                        >
+                          <Checkbox
+                            id={`region-${region.id}`}
+                            checked={selectedRegions.includes(region.id)}
+                            onCheckedChange={() => toggleRegion(region.id)}
+                          />
+                          <Label 
+                            htmlFor={`region-${region.id}`} 
+                            className="cursor-pointer text-sm flex-1"
+                          >
+                            {region.nom} {region.code && `(${region.code})`}
+                          </Label>
+                        </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
 
-              {errors.regions && (
-                <p className="text-sm text-destructive mt-2">{errors.regions.message}</p>
-              )}
-              {regions.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  Aucune région disponible. Créez d'abord des régions.
-                </p>
+                  {errors.regions && (
+                    <p className="text-sm text-destructive mt-2">{errors.regions.message}</p>
+                  )}
+                  {regions.length > 0 && selectedRegions.length === 0 && (
+                    <p className="text-sm text-amber-600 mt-2">
+                      ⚠️ Veuillez sélectionner au moins une région
+                    </p>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>

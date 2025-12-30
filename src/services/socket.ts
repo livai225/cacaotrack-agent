@@ -1,6 +1,22 @@
 import { io, Socket } from 'socket.io-client';
 
-const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000';
+// Détecter l'URL du serveur automatiquement
+const getSocketURL = () => {
+  // Si VITE_API_URL est défini, l'utiliser
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL.replace('/api', '');
+  }
+  
+  // En production, utiliser l'origine actuelle (le serveur distant)
+  if (import.meta.env.PROD) {
+    return window.location.origin;
+  }
+  
+  // En développement, utiliser localhost
+  return 'http://localhost:3000';
+};
+
+const SOCKET_URL = getSocketURL();
 
 class SocketService {
   private socket: Socket | null = null;

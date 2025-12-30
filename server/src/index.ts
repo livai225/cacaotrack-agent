@@ -1446,9 +1446,40 @@ app.get('/api/agents/:id', async (req, res) => {
 
 app.post('/api/agents', async (req, res) => {
   try {
-    const { regions, ...agentData } = req.body;
+    const { regions, password, ...agentData } = req.body;
+    
+    // Générer un username automatiquement si non fourni
+    let username = agentData.username;
+    if (!username || username.trim() === '') {
+      // Générer un username basé sur le code de l'agent ou nom+prenom
+      const baseUsername = agentData.code 
+        ? agentData.code.toLowerCase().replace(/[^a-z0-9]/g, '')
+        : `${agentData.nom?.toLowerCase() || ''}${agentData.prenom?.toLowerCase() || ''}`.replace(/[^a-z0-9]/g, '');
+      
+      // Vérifier l'unicité
+      let counter = 1;
+      username = baseUsername;
+      while (await prisma.agent.findUnique({ where: { username } })) {
+        username = `${baseUsername}${counter}`;
+        counter++;
+      }
+    }
+
+    // Générer un password par défaut si non fourni
+    let password_hash = null;
+    if (password && password.trim() !== '') {
+      password_hash = await bcrypt.hash(password, 10);
+    } else {
+      // Mot de passe par défaut: "password123"
+      password_hash = await bcrypt.hash('password123', 10);
+    }
+
     const agent = await prisma.agent.create({
-      data: agentData
+      data: {
+        ...agentData,
+        username,
+        password_hash
+      }
     });
 
     // Affecter les régions
@@ -1472,22 +1503,58 @@ app.post('/api/agents', async (req, res) => {
         regions: {
           include: { region: true }
         }
+      },
+      select: {
+        id: true,
+        code: true,
+        nom: true,
+        prenom: true,
+        email: true,
+        telephone: true,
+        statut: true,
+        username: true,
+        date_naissance: true,
+        lieu_naissance: true,
+        nationalite: true,
+        type_piece: true,
+        numero_piece: true,
+        photo: true,
+        createdAt: true,
+        updatedAt: true,
+        regions: {
+          include: { region: true }
+        }
       }
     });
 
     res.json(agentWithRegions);
   } catch (error: any) {
-    console.error(error);
+    console.error('❌ Erreur création agent:', error);
+    if (error.code === 'P2002') {
+      return res.status(409).json({ 
+        error: "Un agent avec ce username existe déjà",
+        field: error.meta?.target 
+      });
+    }
     res.status(500).json({ error: error.message || "Erreur création agent" });
   }
 });
 
 app.put('/api/agents/:id', async (req, res) => {
   try {
-    const { regions, ...agentData } = req.body;
+    const { regions, password, username, ...agentData } = req.body;
+    
+    // Ne pas permettre la modification du username
+    const updateData: any = { ...agentData };
+    
+    // Mettre à jour le password si fourni
+    if (password && password.trim() !== '') {
+      updateData.password_hash = await bcrypt.hash(password, 10);
+    }
+    
     const agent = await prisma.agent.update({
       where: { id: req.params.id },
-      data: agentData
+      data: updateData
     });
 
     // Mettre à jour les affectations régions
