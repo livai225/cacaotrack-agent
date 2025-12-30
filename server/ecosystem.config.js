@@ -2,7 +2,7 @@ module.exports = {
   apps: [{
     name: 'cacaotrack-api',
     script: 'node_modules/.bin/ts-node',
-    args: 'src/index.ts',
+    args: '--transpile-only --no-cache src/index.ts',
     cwd: '/var/www/cacaotrack-agent/server',
     instances: 1,
     autorestart: true,
