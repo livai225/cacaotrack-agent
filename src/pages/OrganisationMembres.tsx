@@ -260,6 +260,16 @@ export default function OrganisationMembres() {
                         <Loader2 className="h-4 w-4 animate-spin" />
                         <span className="text-sm text-muted-foreground">Chargement des producteurs...</span>
                       </div>
+                    ) : editingMembre ? (
+                      // Mode édition : afficher le producteur en lecture seule
+                      <div className="flex items-center gap-2 p-2 border rounded-md bg-muted">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">{getProducteurName(editingMembre.id_membre)}</span>
+                        <Input
+                          type="hidden"
+                          value={formData.id_membre}
+                        />
+                      </div>
                     ) : (
                       <Select
                         value={formData.id_membre}
@@ -272,6 +282,7 @@ export default function OrganisationMembres() {
                           });
                         }}
                         required
+                        disabled={editingMembre !== null}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Sélectionner un producteur..." />
@@ -279,6 +290,10 @@ export default function OrganisationMembres() {
                         <SelectContent>
                           {producteurs
                             .filter(prod => {
+                              // En mode édition, inclure le producteur actuel
+                              if (editingMembre && prod.id === editingMembre.id_membre) {
+                                return true;
+                              }
                               // Exclure les producteurs déjà membres de cette organisation
                               return !membres.some(m => m.id_membre === prod.id);
                             })
@@ -290,9 +305,9 @@ export default function OrganisationMembres() {
                         </SelectContent>
                       </Select>
                     )}
-                    {formData.id_membre && (
+                    {formData.id_membre && !editingMembre && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        ID: {formData.id_membre}
+                        ID généré automatiquement: {formData.id_membre}
                       </p>
                     )}
                   </div>
