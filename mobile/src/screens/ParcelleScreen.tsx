@@ -6,19 +6,28 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Text,
 } from 'react-native';
-import { TextInput, Button, Title, Card, List, Text } from 'react-native-paper';
+import { TextInput, Button, Title, Card, List } from 'react-native-paper';
 import { apiService } from '../services/api.service';
 import { useSync } from '../contexts/SyncContext';
+import StepIndicator from '../components/StepIndicator';
+
+const STEPS = [
+  'Producteur',
+  'Informations',
+  'GPS',
+];
 
 export default function ParcelleScreen({ navigation, route }: any) {
   const { isOnline, savePending } = useSync();
   const [loading, setLoading] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
   const [producteurs, setProducteurs] = useState<any[]>([]);
   const [selectedProducteur, setSelectedProducteur] = useState<any>(null);
   const [showProducteurList, setShowProducteurList] = useState(false);
   
-  // Données GPS du mapping (si venant de ParcelleMapScreen)
+  // Données GPS du mapping
   const [polygoneGps, setPolygoneGps] = useState(route.params?.polygone_gps || '');
   const [superficieGps, setSuperficieGps] = useState(route.params?.superficie_gps || '');
   const [perimetre, setPerimetre] = useState(route.params?.perimetre || '');
@@ -35,7 +44,6 @@ export default function ParcelleScreen({ navigation, route }: any) {
   }, []);
 
   useEffect(() => {
-    // Mettre à jour si on revient du mapping
     if (route.params?.polygone_gps) {
       setPolygoneGps(route.params.polygone_gps);
       setSuperficieGps(route.params.superficie_gps);
@@ -56,6 +64,44 @@ export default function ParcelleScreen({ navigation, route }: any) {
     navigation.navigate('ParcelleMap', {
       returnScreen: 'Parcelle',
     });
+  };
+
+  const validateStep = (step: number): boolean => {
+    switch (step) {
+      case 1:
+        if (!selectedProducteur) {
+          Alert.alert('Erreur', 'Veuillez sélectionner un producteur');
+          return false;
+        }
+        return true;
+      case 2:
+        if (!code.trim()) {
+          Alert.alert('Erreur', 'Le code de la parcelle est obligatoire');
+          return false;
+        }
+        return true;
+      case 3:
+        // GPS optionnel
+        return true;
+      default:
+        return true;
+    }
+  };
+
+  const handleNext = () => {
+    if (validateStep(currentStep)) {
+      if (currentStep < STEPS.length) {
+        setCurrentStep(currentStep + 1);
+      } else {
+        handleSubmit();
+      }
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
   };
 
   const handleSubmit = async () => {
@@ -98,135 +144,183 @@ export default function ParcelleScreen({ navigation, route }: any) {
     }
   };
 
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <View style={styles.stepContent}>
+            <Card style={styles.card}>
+              <Card.Content>
+                <Title style={styles.cardTitle}>Sélectionner le Producteur *</Title>
+                
+                <Button
+                  mode="outlined"
+                  onPress={() => setShowProducteurList(!showProducteurList)}
+                  style={styles.selectButton}
+                >
+                  {selectedProducteur ? selectedProducteur.nom_complet : 'Choisir un producteur'}
+                </Button>
+
+                {showProducteurList && (
+                  <View style={styles.listContainer}>
+                    {producteurs.map((prod) => (
+                      <List.Item
+                        key={prod.id}
+                        title={prod.nom_complet}
+                        description={prod.village?.nom}
+                        onPress={() => {
+                          setSelectedProducteur(prod);
+                          setShowProducteurList(false);
+                        }}
+                        left={(props: any) => <List.Icon {...props} icon="account" />}
+                      />
+                    ))}
+                  </View>
+                )}
+              </Card.Content>
+            </Card>
+          </View>
+        );
+
+      case 2:
+        return (
+          <View style={styles.stepContent}>
+            <Card style={styles.card}>
+              <Card.Content>
+                <Title style={styles.cardTitle}>Informations de la Parcelle</Title>
+
+                <TextInput
+                  label="Code de la parcelle *"
+                  value={code}
+                  onChangeText={setCode}
+                  mode="outlined"
+                  style={styles.input}
+                  autoCapitalize="characters"
+                />
+
+                <TextInput
+                  label="Statut"
+                  value={statut}
+                  onChangeText={setStatut}
+                  mode="outlined"
+                  style={styles.input}
+                  placeholder="active, jachere, abandonnee"
+                />
+
+                <View style={styles.row}>
+                  <TextInput
+                    label="Superficie déclarée (ha)"
+                    value={superficieDeclaree}
+                    onChangeText={setSuperficieDeclaree}
+                    mode="outlined"
+                    style={[styles.input, styles.halfInput]}
+                    keyboardType="numeric"
+                  />
+
+                  <TextInput
+                    label="Âge (années)"
+                    value={ageplantation}
+                    onChangeText={setAgeplantation}
+                    mode="outlined"
+                    style={[styles.input, styles.halfInput]}
+                    keyboardType="numeric"
+                  />
+                </View>
+
+                <TextInput
+                  label="Variété de cacao"
+                  value={varieteCacao}
+                  onChangeText={setVarieteCacao}
+                  mode="outlined"
+                  style={styles.input}
+                  placeholder="Amelonado, Mercedes, etc."
+                />
+              </Card.Content>
+            </Card>
+          </View>
+        );
+
+      case 3:
+        return (
+          <View style={styles.stepContent}>
+            <Card style={styles.card}>
+              <Card.Content>
+                <Title style={styles.cardTitle}>Cartographie GPS</Title>
+
+                {superficieGps ? (
+                  <View style={styles.gpsInfo}>
+                    <Text style={styles.gpsLabel}>✅ Parcelle cartographiée</Text>
+                    <Text style={styles.gpsValue}>Superficie GPS: {superficieGps} ha</Text>
+                    <Text style={styles.gpsValue}>Périmètre: {perimetre} m</Text>
+                    <Text style={styles.gpsValue}>
+                      Points: {polygoneGps ? JSON.parse(polygoneGps).length : 0}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={styles.noGps}>Aucune cartographie GPS</Text>
+                )}
+
+                <Button
+                  mode="contained"
+                  icon="map"
+                  onPress={handleGoToMapping}
+                  style={styles.mappingButton}
+                  buttonColor="#4CAF50"
+                >
+                  {superficieGps ? 'Modifier la Cartographie' : 'Cartographier la Parcelle'}
+                </Button>
+
+                <Text style={styles.optionalText}>
+                  * La cartographie GPS est optionnelle
+                </Text>
+              </Card.Content>
+            </Card>
+          </View>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView style={styles.scroll}>
-        {/* Producteur */}
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title>Sélectionner le Producteur</Title>
-            
-            <Button
-              mode="outlined"
-              onPress={() => setShowProducteurList(!showProducteurList)}
-              style={styles.selectButton}
-            >
-              {selectedProducteur ? selectedProducteur.nom_complet : 'Choisir un producteur'}
-            </Button>
+      <StepIndicator
+        currentStep={currentStep}
+        totalSteps={STEPS.length}
+        stepNames={STEPS}
+      />
 
-            {showProducteurList && (
-              <View style={styles.listContainer}>
-                {producteurs.map((prod) => (
-                  <List.Item
-                    key={prod.id}
-                    title={prod.nom_complet}
-                    description={prod.village?.nom}
-                    onPress={() => {
-                      setSelectedProducteur(prod);
-                      setShowProducteurList(false);
-                    }}
-                    left={(props: any) => <List.Icon {...props} icon="account" />}
-                  />
-                ))}
-              </View>
-            )}
-          </Card.Content>
-        </Card>
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+        {renderStepContent()}
+      </ScrollView>
 
-        {/* Informations de base */}
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title>Informations de la Parcelle</Title>
-
-            <TextInput
-              label="Code de la parcelle *"
-              value={code}
-              onChangeText={setCode}
-              mode="outlined"
-              style={styles.input}
-              autoCapitalize="characters"
-            />
-
-            <TextInput
-              label="Statut"
-              value={statut}
-              onChangeText={setStatut}
-              mode="outlined"
-              style={styles.input}
-              placeholder="active, jachere, abandonnee"
-            />
-
-            <TextInput
-              label="Superficie déclarée (ha)"
-              value={superficieDeclaree}
-              onChangeText={setSuperficieDeclaree}
-              mode="outlined"
-              style={styles.input}
-              keyboardType="numeric"
-            />
-
-            <TextInput
-              label="Âge de la plantation (années)"
-              value={ageplantation}
-              onChangeText={setAgeplantation}
-              mode="outlined"
-              style={styles.input}
-              keyboardType="numeric"
-            />
-
-            <TextInput
-              label="Variété de cacao"
-              value={varieteCacao}
-              onChangeText={setVarieteCacao}
-              mode="outlined"
-              style={styles.input}
-              placeholder="Amelonado, Mercedes, etc."
-            />
-          </Card.Content>
-        </Card>
-
-        {/* Cartographie GPS */}
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title>Cartographie GPS</Title>
-
-            {superficieGps ? (
-              <View style={styles.gpsInfo}>
-                <Text style={styles.gpsLabel}>✅ Parcelle cartographiée</Text>
-                <Text style={styles.gpsValue}>Superficie GPS: {superficieGps} ha</Text>
-                <Text style={styles.gpsValue}>Périmètre: {perimetre} m</Text>
-                <Text style={styles.gpsValue}>Points: {polygoneGps ? JSON.parse(polygoneGps).length : 0}</Text>
-              </View>
-            ) : (
-              <Text style={styles.noGps}>Aucune cartographie GPS</Text>
-            )}
-
-            <Button
-              mode="contained"
-              icon="map"
-              onPress={handleGoToMapping}
-              style={styles.mappingButton}
-              buttonColor="#4CAF50"
-            >
-              {superficieGps ? 'Modifier la Cartographie' : 'Cartographier la Parcelle'}
-            </Button>
-          </Card.Content>
-        </Card>
-
+      <View style={styles.navigationButtons}>
+        {currentStep > 1 && (
+          <Button
+            mode="outlined"
+            onPress={handlePrevious}
+            style={[styles.navButton, styles.prevButton]}
+            icon="arrow-left"
+          >
+            Précédent
+          </Button>
+        )}
         <Button
           mode="contained"
-          onPress={handleSubmit}
-          loading={loading}
+          onPress={handleNext}
+          loading={loading && currentStep === STEPS.length}
           disabled={loading}
-          style={styles.submitButton}
+          style={[styles.navButton, styles.nextButton]}
           buttonColor="#8B4513"
+          icon={currentStep === STEPS.length ? "check" : "arrow-right"}
         >
-          Créer la Parcelle
+          {currentStep === STEPS.length ? 'Créer' : 'Suivant'}
         </Button>
-      </ScrollView>
+      </View>
     </KeyboardAvoidingView>
   );
 }
@@ -238,14 +332,21 @@ const styles = StyleSheet.create({
   },
   scroll: {
     flex: 1,
+  },
+  stepContent: {
     padding: 16,
   },
   card: {
     marginBottom: 16,
     elevation: 2,
   },
+  cardTitle: {
+    fontSize: 18,
+    marginBottom: 12,
+    color: '#333',
+  },
   selectButton: {
-    marginTop: 12,
+    marginTop: 8,
   },
   listContainer: {
     marginTop: 8,
@@ -253,6 +354,14 @@ const styles = StyleSheet.create({
   },
   input: {
     marginTop: 12,
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
+  halfInput: {
+    flex: 1,
   },
   gpsInfo: {
     marginTop: 12,
@@ -280,9 +389,24 @@ const styles = StyleSheet.create({
   mappingButton: {
     marginTop: 16,
   },
-  submitButton: {
-    marginTop: 16,
-    marginBottom: 40,
-    paddingVertical: 8,
+  optionalText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#999',
+    fontStyle: 'italic',
+  },
+  navigationButtons: {
+    flexDirection: 'row',
+    padding: 16,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+    gap: 12,
+  },
+  navButton: {
+    flex: 1,
+  },
+  prevButton: {
+    borderColor: '#8B4513',
   },
 });

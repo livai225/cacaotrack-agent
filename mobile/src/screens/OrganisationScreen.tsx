@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -10,10 +10,18 @@ import {
 import { TextInput, Button, Title, Card } from 'react-native-paper';
 import { apiService } from '../services/api.service';
 import { useSync } from '../contexts/SyncContext';
+import StepIndicator from '../components/StepIndicator';
+
+const STEPS = [
+  'Informations',
+  'Président',
+  'Secrétaire',
+];
 
 export default function OrganisationScreen({ navigation, route }: any) {
   const { isOnline, savePending } = useSync();
   const [loading, setLoading] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
   
   // Formulaire
   const [nom, setNom] = useState('');
@@ -24,8 +32,42 @@ export default function OrganisationScreen({ navigation, route }: any) {
   const [secretaireNom, setSecretaireNom] = useState('');
   const [secretaireContact, setSecretaireContact] = useState('');
 
+  const validateStep = (step: number): boolean => {
+    switch (step) {
+      case 1:
+        if (!nom.trim() || !sigle.trim() || !localite.trim()) {
+          Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires');
+          return false;
+        }
+        return true;
+      case 2:
+        // Président optionnel
+        return true;
+      case 3:
+        // Secrétaire optionnel
+        return true;
+      default:
+        return true;
+    }
+  };
+
+  const handleNext = () => {
+    if (validateStep(currentStep)) {
+      if (currentStep < STEPS.length) {
+        setCurrentStep(currentStep + 1);
+      } else {
+        handleSubmit();
+      }
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
   const handleSubmit = async () => {
-    // Validation
     if (!nom || !sigle || !localite) {
       Alert.alert('Erreur', 'Veuillez remplir les champs obligatoires');
       return;
@@ -44,13 +86,11 @@ export default function OrganisationScreen({ navigation, route }: any) {
     setLoading(true);
     try {
       if (isOnline) {
-        // Envoyer directement
         await apiService.createOrganisation(data);
         Alert.alert('Succès', 'Organisation créée avec succès', [
           { text: 'OK', onPress: () => navigation.goBack() }
         ]);
       } else {
-        // Sauvegarder pour synchronisation
         await savePending('organisation', data);
         Alert.alert(
           'Hors ligne',
@@ -65,100 +105,151 @@ export default function OrganisationScreen({ navigation, route }: any) {
     }
   };
 
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <View style={styles.stepContent}>
+            <Card style={styles.card}>
+              <Card.Content>
+                <Title style={styles.cardTitle}>Informations de l'Organisation</Title>
+
+                <TextInput
+                  label="Nom de l'organisation *"
+                  value={nom}
+                  onChangeText={setNom}
+                  mode="outlined"
+                  style={styles.input}
+                />
+
+                <TextInput
+                  label="Sigle *"
+                  value={sigle}
+                  onChangeText={setSigle}
+                  mode="outlined"
+                  style={styles.input}
+                  autoCapitalize="characters"
+                />
+
+                <TextInput
+                  label="Localité *"
+                  value={localite}
+                  onChangeText={setLocalite}
+                  mode="outlined"
+                  style={styles.input}
+                />
+              </Card.Content>
+            </Card>
+          </View>
+        );
+
+      case 2:
+        return (
+          <View style={styles.stepContent}>
+            <Card style={styles.card}>
+              <Card.Content>
+                <Title style={styles.cardTitle}>Président</Title>
+
+                <TextInput
+                  label="Nom du président"
+                  value={presidentNom}
+                  onChangeText={setPresidentNom}
+                  mode="outlined"
+                  style={styles.input}
+                />
+
+                <TextInput
+                  label="Contact du président"
+                  value={presidentContact}
+                  onChangeText={setPresidentContact}
+                  mode="outlined"
+                  style={styles.input}
+                  keyboardType="phone-pad"
+                />
+
+                <Text style={styles.optionalText}>
+                  * Ces informations sont optionnelles
+                </Text>
+              </Card.Content>
+            </Card>
+          </View>
+        );
+
+      case 3:
+        return (
+          <View style={styles.stepContent}>
+            <Card style={styles.card}>
+              <Card.Content>
+                <Title style={styles.cardTitle}>Secrétaire</Title>
+
+                <TextInput
+                  label="Nom du secrétaire"
+                  value={secretaireNom}
+                  onChangeText={setSecretaireNom}
+                  mode="outlined"
+                  style={styles.input}
+                />
+
+                <TextInput
+                  label="Contact du secrétaire"
+                  value={secretaireContact}
+                  onChangeText={setSecretaireContact}
+                  mode="outlined"
+                  style={styles.input}
+                  keyboardType="phone-pad"
+                />
+
+                <Text style={styles.optionalText}>
+                  * Ces informations sont optionnelles
+                </Text>
+              </Card.Content>
+            </Card>
+          </View>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView style={styles.scroll}>
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title>Informations de l'Organisation</Title>
+      <StepIndicator
+        currentStep={currentStep}
+        totalSteps={STEPS.length}
+        stepNames={STEPS}
+      />
 
-            <TextInput
-              label="Nom de l'organisation *"
-              value={nom}
-              onChangeText={setNom}
-              mode="outlined"
-              style={styles.input}
-            />
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+        {renderStepContent()}
+      </ScrollView>
 
-            <TextInput
-              label="Sigle *"
-              value={sigle}
-              onChangeText={setSigle}
-              mode="outlined"
-              style={styles.input}
-              autoCapitalize="characters"
-            />
-
-            <TextInput
-              label="Localité *"
-              value={localite}
-              onChangeText={setLocalite}
-              mode="outlined"
-              style={styles.input}
-            />
-          </Card.Content>
-        </Card>
-
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title>Président</Title>
-
-            <TextInput
-              label="Nom du président"
-              value={presidentNom}
-              onChangeText={setPresidentNom}
-              mode="outlined"
-              style={styles.input}
-            />
-
-            <TextInput
-              label="Contact du président"
-              value={presidentContact}
-              onChangeText={setPresidentContact}
-              mode="outlined"
-              style={styles.input}
-              keyboardType="phone-pad"
-            />
-          </Card.Content>
-        </Card>
-
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title>Secrétaire</Title>
-
-            <TextInput
-              label="Nom du secrétaire"
-              value={secretaireNom}
-              onChangeText={setSecretaireNom}
-              mode="outlined"
-              style={styles.input}
-            />
-
-            <TextInput
-              label="Contact du secrétaire"
-              value={secretaireContact}
-              onChangeText={setSecretaireContact}
-              mode="outlined"
-              style={styles.input}
-              keyboardType="phone-pad"
-            />
-          </Card.Content>
-        </Card>
-
+      <View style={styles.navigationButtons}>
+        {currentStep > 1 && (
+          <Button
+            mode="outlined"
+            onPress={handlePrevious}
+            style={[styles.navButton, styles.prevButton]}
+            icon="arrow-left"
+          >
+            Précédent
+          </Button>
+        )}
         <Button
           mode="contained"
-          onPress={handleSubmit}
-          loading={loading}
+          onPress={handleNext}
+          loading={loading && currentStep === STEPS.length}
           disabled={loading}
-          style={styles.submitButton}
+          style={[styles.navButton, styles.nextButton]}
           buttonColor="#8B4513"
+          icon={currentStep === STEPS.length ? "check" : "arrow-right"}
         >
-          Créer l'Organisation
+          {currentStep === STEPS.length ? 'Créer' : 'Suivant'}
         </Button>
-      </ScrollView>
+      </View>
     </KeyboardAvoidingView>
   );
 }
@@ -170,18 +261,40 @@ const styles = StyleSheet.create({
   },
   scroll: {
     flex: 1,
+  },
+  stepContent: {
     padding: 16,
   },
   card: {
     marginBottom: 16,
     elevation: 2,
   },
+  cardTitle: {
+    fontSize: 18,
+    marginBottom: 12,
+    color: '#333',
+  },
   input: {
     marginTop: 12,
   },
-  submitButton: {
-    marginTop: 16,
-    marginBottom: 40,
-    paddingVertical: 8,
+  optionalText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#999',
+    fontStyle: 'italic',
+  },
+  navigationButtons: {
+    flexDirection: 'row',
+    padding: 16,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+    gap: 12,
+  },
+  navButton: {
+    flex: 1,
+  },
+  prevButton: {
+    borderColor: '#8B4513',
   },
 });
