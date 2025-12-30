@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { ArrowLeft, Plus, Search, Users, Trash2, Edit, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import type { MembreOrganisation, Organisation } from "@/types/organisation";
+import type { MembreOrganisation, Organisation, Producteur } from "@/types/organisation";
 import { membreOrganisationService } from "@/services/organisationService";
 import { api } from "@/services/api";
 
@@ -32,14 +32,16 @@ export default function OrganisationMembres() {
   const { orgId } = useParams<{ orgId: string }>();
   const [organisation, setOrganisation] = useState<Organisation | null>(null);
   const [membres, setMembres] = useState<MembreOrganisation[]>([]);
+  const [producteurs, setProducteurs] = useState<Producteur[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingMembre, setEditingMembre] = useState<MembreOrganisation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingProducteurs, setIsLoadingProducteurs] = useState(false);
 
   // Formulaire
   const [formData, setFormData] = useState({
-    id_membre: "",
+    id_membre: "", // Sera rempli automatiquement lors de la sélection du producteur
     role: "membre" as MembreOrganisation['role'],
     date_adhesion: new Date().toISOString().split('T')[0],
     statut: "actif" as MembreOrganisation['statut'],
@@ -50,6 +52,7 @@ export default function OrganisationMembres() {
     if (orgId) {
       loadOrganisation();
       loadMembres();
+      loadProducteurs();
     }
   }, [orgId]);
 
@@ -64,6 +67,19 @@ export default function OrganisationMembres() {
       toast.error("Erreur lors du chargement de l'organisation");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadProducteurs = async () => {
+    try {
+      setIsLoadingProducteurs(true);
+      const prods = await api.getProducteurs();
+      setProducteurs(prods);
+    } catch (error) {
+      console.error("Erreur chargement producteurs:", error);
+      toast.error("Erreur lors du chargement des producteurs");
+    } finally {
+      setIsLoadingProducteurs(false);
     }
   };
 
@@ -135,6 +151,12 @@ export default function OrganisationMembres() {
     setEditingMembre(null);
   };
 
+  // Obtenir le nom du producteur à partir de son ID
+  const getProducteurName = (producteurId: string) => {
+    const producteur = producteurs.find(p => p.id === producteurId);
+    return producteur ? `${producteur.nom_complet} (${producteur.code})` : producteurId;
+  };
+
   const getStatusBadge = (statut: string) => {
     const colors = {
       actif: "bg-success text-success-foreground",
@@ -157,7 +179,9 @@ export default function OrganisationMembres() {
 
   const filteredMembres = membres.filter(m => {
     const query = searchQuery.toLowerCase();
-    return m.id_membre.toLowerCase().includes(query) ||
+    const producteurName = getProducteurName(m.id_membre).toLowerCase();
+    return producteurName.includes(query) ||
+           m.id_membre.toLowerCase().includes(query) ||
            m.role.toLowerCase().includes(query);
   });
 
@@ -230,14 +254,47 @@ export default function OrganisationMembres() {
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
-                    <Label htmlFor="id_membre">ID du Membre (Producteur) *</Label>
-                    <Input
-                      id="id_membre"
-                      value={formData.id_membre}
-                      onChange={(e) => setFormData({ ...formData, id_membre: e.target.value })}
-                      placeholder="Ex: PROD-0001"
-                      required
-                    />
+                    <Label htmlFor="id_membre">Producteur *</Label>
+                    {isLoadingProducteurs ? (
+                      <div className="flex items-center gap-2 p-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span className="text-sm text-muted-foreground">Chargement des producteurs...</span>
+                      </div>
+                    ) : (
+                      <Select
+                        value={formData.id_membre}
+                        onValueChange={(value) => {
+                          const producteur = producteurs.find(p => p.id === value);
+                          setFormData({ 
+                            ...formData, 
+                            id_membre: value,
+                            notes: producteur ? `Producteur: ${producteur.nom_complet} (${producteur.code})` : formData.notes
+                          });
+                        }}
+                        required
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner un producteur..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {producteurs
+                            .filter(prod => {
+                              // Exclure les producteurs déjà membres de cette organisation
+                              return !membres.some(m => m.id_membre === prod.id);
+                            })
+                            .map((prod) => (
+                              <SelectItem key={prod.id} value={prod.id}>
+                                {prod.nom_complet} ({prod.code})
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    {formData.id_membre && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        ID: {formData.id_membre}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -334,7 +391,7 @@ export default function OrganisationMembres() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID Membre</TableHead>
+                  <TableHead>Producteur</TableHead>
                   <TableHead>Rôle</TableHead>
                   <TableHead>Date d'Adhésion</TableHead>
                   <TableHead>Statut</TableHead>
@@ -352,7 +409,7 @@ export default function OrganisationMembres() {
                 ) : (
                   filteredMembres.map((membre) => (
                     <TableRow key={membre.id}>
-                      <TableCell className="font-mono">{membre.id_membre}</TableCell>
+                      <TableCell>{getProducteurName(membre.id_membre)}</TableCell>
                       <TableCell>
                         <Badge className={getRoleBadge(membre.role)}>
                           {membre.role}
