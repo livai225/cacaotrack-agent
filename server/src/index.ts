@@ -1477,52 +1477,39 @@ app.post('/api/agents', async (req, res) => {
     }
 
     // Convertir date_naissance au format DateTime si fournie
-    const processedData: any = { ...agentData };
+    let dateNaissanceConvertie: Date | null = null;
     
-    console.log('🔄 Avant conversion - date_naissance:', processedData.date_naissance, 'type:', typeof processedData.date_naissance);
-    
-    if (processedData.date_naissance !== undefined && processedData.date_naissance !== null) {
-      const dateStr = String(processedData.date_naissance).trim();
+    if (agentData.date_naissance !== undefined && agentData.date_naissance !== null) {
+      const dateStr = String(agentData.date_naissance).trim();
       if (dateStr !== '' && dateStr !== 'null' && dateStr !== 'undefined') {
         // Si c'est une date seule (YYYY-MM-DD), ajouter l'heure
         if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-          processedData.date_naissance = new Date(dateStr + 'T00:00:00.000Z');
+          dateNaissanceConvertie = new Date(dateStr + 'T00:00:00.000Z');
         } else {
-          processedData.date_naissance = new Date(dateStr);
+          dateNaissanceConvertie = new Date(dateStr);
         }
         // Vérifier que la date est valide
-        if (isNaN(processedData.date_naissance.getTime())) {
+        if (isNaN(dateNaissanceConvertie.getTime())) {
           console.warn('⚠️ Date invalide:', dateStr, '-> null');
-          processedData.date_naissance = null;
+          dateNaissanceConvertie = null;
         } else {
-          console.log('✅ Date convertie:', dateStr, '->', processedData.date_naissance.toISOString());
+          console.log('✅ Date convertie:', dateStr, '->', dateNaissanceConvertie.toISOString());
         }
-      } else {
-        console.log('ℹ️ Date vide ou null, mise à null');
-        processedData.date_naissance = null;
       }
-    } else {
-      console.log('ℹ️ date_naissance undefined/null, mise à null');
-      processedData.date_naissance = null;
-    }
-    
-    console.log('🔄 Après conversion - date_naissance:', processedData.date_naissance, 'type:', typeof processedData.date_naissance);
-    if (processedData.date_naissance instanceof Date) {
-      console.log('✅ date_naissance est un objet Date:', processedData.date_naissance.toISOString());
-    } else {
-      console.warn('⚠️ date_naissance n\'est PAS un objet Date:', processedData.date_naissance);
     }
 
-    // Préparer les données pour Prisma (sans JSON.stringify pour préserver les objets Date)
+    // Créer un nouvel objet avec la date convertie
+    const { date_naissance, ...restAgentData } = agentData;
     const prismaData = {
-      ...processedData,
+      ...restAgentData,
+      date_naissance: dateNaissanceConvertie,
       username,
       password_hash
     };
     
-    console.log('📤 Envoi à Prisma - date_naissance type:', typeof prismaData.date_naissance);
+    console.log('📤 Envoi à Prisma - date_naissance:', prismaData.date_naissance, 'type:', typeof prismaData.date_naissance);
     if (prismaData.date_naissance instanceof Date) {
-      console.log('✅ date_naissance est un Date avant Prisma');
+      console.log('✅ date_naissance est un Date avant Prisma:', prismaData.date_naissance.toISOString());
     }
 
     const agent = await prisma.agent.create({
