@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 
 interface StepIndicatorProps {
   currentStep: number;
@@ -155,4 +155,5 @@ const styles = StyleSheet.create({
     color: '#333',
   },
 });
+
 

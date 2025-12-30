@@ -8,7 +8,7 @@ import {
   Platform,
 } from 'react-native';
 import { TextInput, Button, Title, Card, List, Text } from 'react-native-paper';
-import Geolocation from 'react-native-geolocation-service';
+import * as Location from 'expo-location';
 import { apiService } from '../services/api.service';
 import { useSync } from '../contexts/SyncContext';
 
@@ -247,3 +247,4 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
 });
+

@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   StatusBar,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { Card } from 'react-native-paper';
 import { apiService } from '../services/api.service';
 
@@ -171,4 +171,5 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
 });
+
 

@@ -10,8 +10,8 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { TextInput, Button, Title, Card, List, Text } from 'react-native-paper';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { apiService } from '../services/api.service';
 import { useSync } from '../contexts/SyncContext';
 import StepIndicator from '../components/StepIndicator';
@@ -556,3 +556,4 @@ const styles = StyleSheet.create({
     // Styles pour le bouton suivant
   },
 });
+
