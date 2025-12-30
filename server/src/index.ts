@@ -1448,6 +1448,8 @@ app.post('/api/agents', async (req, res) => {
   try {
     const { regions, password, ...agentData } = req.body;
     
+    console.log('📥 Données reçues pour création agent:', JSON.stringify(agentData, null, 2));
+    
     // Générer un username automatiquement si non fourni
     let username = agentData.username;
     if (!username || username.trim() === '') {
@@ -1476,9 +1478,12 @@ app.post('/api/agents', async (req, res) => {
 
     // Convertir date_naissance au format DateTime si fournie
     const processedData: any = { ...agentData };
-    if (processedData.date_naissance) {
+    
+    console.log('🔄 Avant conversion - date_naissance:', processedData.date_naissance, 'type:', typeof processedData.date_naissance);
+    
+    if (processedData.date_naissance !== undefined && processedData.date_naissance !== null) {
       const dateStr = String(processedData.date_naissance).trim();
-      if (dateStr !== '') {
+      if (dateStr !== '' && dateStr !== 'null' && dateStr !== 'undefined') {
         // Si c'est une date seule (YYYY-MM-DD), ajouter l'heure
         if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
           processedData.date_naissance = new Date(dateStr + 'T00:00:00.000Z');
@@ -1493,11 +1498,16 @@ app.post('/api/agents', async (req, res) => {
           console.log('✅ Date convertie:', dateStr, '->', processedData.date_naissance.toISOString());
         }
       } else {
+        console.log('ℹ️ Date vide ou null, mise à null');
         processedData.date_naissance = null;
       }
     } else {
+      console.log('ℹ️ date_naissance undefined/null, mise à null');
       processedData.date_naissance = null;
     }
+    
+    console.log('🔄 Après conversion - date_naissance:', processedData.date_naissance, 'type:', typeof processedData.date_naissance);
+    console.log('📤 Données envoyées à Prisma:', JSON.stringify({ ...processedData, username, password_hash: '***' }, null, 2));
 
     const agent = await prisma.agent.create({
       data: {
