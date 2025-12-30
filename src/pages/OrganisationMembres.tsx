@@ -21,18 +21,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Plus, Search, Users, Trash2, Edit } from "lucide-react";
+import { ArrowLeft, Plus, Search, Users, Trash2, Edit, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import type { MembreOrganisation } from "@/types/organisation";
-import { membreOrganisationService, organisationService } from "@/services/organisationService";
+import type { MembreOrganisation, Organisation } from "@/types/organisation";
+import { membreOrganisationService } from "@/services/organisationService";
+import { api } from "@/services/api";
 
 export default function OrganisationMembres() {
   const navigate = useNavigate();
   const { orgId } = useParams<{ orgId: string }>();
+  const [organisation, setOrganisation] = useState<Organisation | null>(null);
   const [membres, setMembres] = useState<MembreOrganisation[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingMembre, setEditingMembre] = useState<MembreOrganisation | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Formulaire
   const [formData, setFormData] = useState({
@@ -43,13 +46,26 @@ export default function OrganisationMembres() {
     notes: "",
   });
 
-  const organisation = orgId ? organisationService.getById(orgId) : null;
-
   useEffect(() => {
     if (orgId) {
+      loadOrganisation();
       loadMembres();
     }
   }, [orgId]);
+
+  const loadOrganisation = async () => {
+    if (!orgId) return;
+    try {
+      setIsLoading(true);
+      const org = await api.getOrganisation(orgId);
+      setOrganisation(org);
+    } catch (error) {
+      console.error("Erreur chargement organisation:", error);
+      toast.error("Erreur lors du chargement de l'organisation");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const loadMembres = () => {
     if (orgId) {
@@ -145,10 +161,34 @@ export default function OrganisationMembres() {
            m.role.toLowerCase().includes(query);
   });
 
+  if (isLoading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Chargement de l'organisation...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!organisation) {
     return (
       <div className="p-6">
-        <p className="text-destructive">Organisation non trouvée</p>
+        <div className="flex items-center gap-4 mb-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/organisations")}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-2xl font-bold">Organisation non trouvée</h1>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-destructive">L'organisation avec l'ID "{orgId}" n'a pas été trouvée.</p>
+            <Button className="mt-4" onClick={() => navigate("/organisations")}>
+              Retour à la liste
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
