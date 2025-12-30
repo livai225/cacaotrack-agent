@@ -1,9 +1,9 @@
 module.exports = {
   apps: [{
-    name: 'asco-api',
+    name: 'cacaotrack-api',
     script: 'node_modules/.bin/ts-node',
     args: 'src/index.ts',
-    cwd: '/home/asco/apps/cacaotrack-agent/server',
+    cwd: '/var/www/cacaotrack-agent/server',
     instances: 1,
     autorestart: true,
     watch: false,
@@ -11,8 +11,8 @@ module.exports = {
     env: {
       NODE_ENV: 'production'
     },
-    error_file: '/home/asco/.pm2/logs/asco-api-error.log',
-    out_file: '/home/asco/.pm2/logs/asco-api-out.log',
+    error_file: '/home/asco/.pm2/logs/cacaotrack-api-error.log',
+    out_file: '/home/asco/.pm2/logs/cacaotrack-api-out.log',
     log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
     merge_logs: true
   }]

@@ -1503,31 +1503,16 @@ app.post('/api/agents', async (req, res) => {
         regions: {
           include: { region: true }
         }
-      },
-      select: {
-        id: true,
-        code: true,
-        nom: true,
-        prenom: true,
-        email: true,
-        telephone: true,
-        statut: true,
-        username: true,
-        date_naissance: true,
-        lieu_naissance: true,
-        nationalite: true,
-        type_piece: true,
-        numero_piece: true,
-        photo: true,
-        createdAt: true,
-        updatedAt: true,
-        regions: {
-          include: { region: true }
-        }
       }
     });
 
-    res.json(agentWithRegions);
+    // Exclure password_hash de la réponse
+    if (agentWithRegions) {
+      const { password_hash, ...agentData } = agentWithRegions as any;
+      res.json(agentData);
+    } else {
+      res.status(404).json({ error: "Agent non trouvé" });
+    }
   } catch (error: any) {
     console.error('❌ Erreur création agent:', error);
     if (error.code === 'P2002') {
@@ -1589,6 +1574,12 @@ app.put('/api/agents/:id', async (req, res) => {
       }
     });
 
+    // Exclure password_hash de la réponse
+    if (agentWithRegions) {
+      const { password_hash, ...agentData } = agentWithRegions as any;
+      return res.json(agentData);
+    }
+    
     res.json(agentWithRegions);
   } catch (error: any) {
     console.error(error);
