@@ -14,6 +14,24 @@ class ApiService {
       },
     });
 
+    // Intercepteur pour améliorer le diagnostic des erreurs
+    this.api.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        // Logger les détails de l'erreur pour le diagnostic
+        if (!error.response) {
+          console.error('❌ [API] Erreur de connexion:', {
+            message: error.message,
+            code: error.code,
+            baseURL: this.api.defaults.baseURL,
+            url: error.config?.url,
+            fullURL: `${this.api.defaults.baseURL}${error.config?.url}`,
+          });
+        }
+        return Promise.reject(error);
+      }
+    );
+
     // Intercepteur pour ajouter le token
     this.api.interceptors.request.use(
       async (config) => {
@@ -29,8 +47,47 @@ class ApiService {
 
   // ==================== AUTH ====================
   async login(username: string, password: string) {
-    const response = await this.api.post('/auth/login', { username, password });
-    return response.data;
+    try {
+      console.log('🔵 [API] Tentative de connexion:', { username, baseURL: this.api.defaults.baseURL });
+      const response = await this.api.post('/auth/login', { username, password });
+      console.log('✅ [API] Réponse reçue:', { status: response.status, hasAgent: !!response.data?.agent, hasToken: !!response.data?.token });
+      
+      // Le backend retourne { success: true, agent, token }
+      // On normalise pour retourner { agent, token }
+      if (response.data.success && response.data.agent && response.data.token) {
+        return {
+          agent: response.data.agent,
+          token: response.data.token,
+        };
+      }
+      // Si la structure est déjà correcte, la retourner telle quelle
+      if (response.data.agent && response.data.token) {
+        return response.data;
+      }
+      // Si aucune structure valide, lancer une erreur
+      throw new Error('Réponse invalide du serveur');
+    } catch (error: any) {
+      console.error('❌ [API] Erreur login:', {
+        message: error?.message,
+        response: error?.response?.data,
+        status: error?.response?.status,
+        url: error?.config?.url,
+        baseURL: error?.config?.baseURL,
+      });
+      
+      // Améliorer la gestion des erreurs
+      if (error.response) {
+        // Erreur du serveur
+        const errorMessage = error.response.data?.error || error.response.data?.message || 'Identifiants incorrects';
+        throw new Error(errorMessage);
+      } else if (error.request) {
+        // Pas de réponse du serveur
+        throw new Error('Impossible de se connecter au serveur. Vérifiez votre connexion internet.');
+      } else {
+        // Erreur lors de la configuration de la requête
+        throw new Error(error?.message || 'Erreur de configuration de la requête');
+      }
+    }
   }
 
   // ==================== ORGANISATIONS ====================

@@ -216,7 +216,7 @@ npm run test:e2e
 
 ## 📝 TODO
 
-- [ ] Ajouter les écrans restants (Home, Organisation, etc.)
+- [x] Initialiser tous les écrans de base (Login, Home, etc.)
 - [ ] Implémenter le mapping GPS complet
 - [ ] Implémenter la signature tactile
 - [ ] Ajouter les tests
@@ -240,6 +240,29 @@ npm run test:e2e
 - Vider le cache : `AsyncStorage.clear()`
 - Redémarrer l'application
 
+## 📒 Journal des Modifications
+
+### Correction Authentification (Juin 2024)
+
+Suite à des erreurs d'authentification, les modifications suivantes ont été apportées :
+
+- **Service API (`mobile/src/services/api.service.ts`)** :
+  - Gestion des erreurs améliorée.
+  - Normalisation de la réponse du backend (`{ success: true, agent, token }` → `{ agent, token }`).
+  - Ajout de logs de débogage pour identifier les problèmes.
+
+- **Contexte d'authentification (`mobile/src/contexts/AuthContext.tsx`)** :
+  - Validation de la réponse avant de stocker les données.
+  - Messages d'erreur plus clairs.
+
+- **Écran de connexion (`mobile/src/screens/LoginScreen.tsx`)** :
+  - Affichage des messages d'erreur amélioré.
+  - Ajout de logs de débogage.
+
+- **Configuration API (`mobile/src/config/api.ts`)** :
+  - URL mise à jour pour utiliser le port `3000` directement : `http://82.208.22.230:3000/api`.
+  - Si Nginx est utilisé comme proxy, l'URL peut être ramenée à `http://82.208.22.230/api`.
+
 ## 📞 Support
 
 Pour toute question ou problème, contacter l'équipe de développement.
@@ -247,4 +270,4 @@ Pour toute question ou problème, contacter l'équipe de développement.
 ---
 
 **Version** : 1.0.0  
-**Dernière mise à jour** : Décembre 2024
+**Dernière mise à jour** : Juin 2024

@@ -1,5 +1,4 @@
 const { getDefaultConfig } = require('expo/metro-config');
-const { mergeConfig } = require('metro-config');
 
 /**
  * Metro configuration
@@ -9,6 +8,4 @@ const { mergeConfig } = require('metro-config');
  */
 const config = getDefaultConfig(__dirname);
 
-module.exports = mergeConfig(config, {
-  // Ajoutez ici des configurations Metro supplémentaires si nécessaire
-});
+module.exports = config;

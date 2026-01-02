@@ -26,10 +26,13 @@ export default function LoginScreen() {
     try {
       await login(username, password);
     } catch (error: any) {
+      // Gérer les erreurs de manière plus claire
+      const errorMessage = error?.message || error?.response?.data?.error || error?.response?.data?.message || 'Identifiants incorrects';
       Alert.alert(
         'Erreur de connexion',
-        error.response?.data?.message || 'Identifiants incorrects'
+        errorMessage
       );
+      console.error('Détails erreur login:', error);
     } finally {
       setLoading(false);
     }

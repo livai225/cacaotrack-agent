@@ -55,13 +55,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await apiService.login(username, password);
       
+      if (!response.agent || !response.token) {
+        throw new Error('Réponse invalide du serveur');
+      }
+      
       await AsyncStorage.setItem('agent', JSON.stringify(response.agent));
       await AsyncStorage.setItem('auth_token', response.token);
       
       setAgent(response.agent);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur login:', error);
-      throw error;
+      // Propager l'erreur avec un message clair
+      throw error instanceof Error ? error : new Error(error?.message || 'Erreur de connexion');
     }
   };
 

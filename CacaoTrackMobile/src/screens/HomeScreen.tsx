@@ -1,324 +1,296 @@
-import React from 'react';
-import { View, StyleSheet, ScrollView, Alert, Text, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  StatusBar,
+} from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuth } from '../contexts/AuthContext';
 import { useSync } from '../contexts/SyncContext';
-import { colors } from '../theme/colors';
-import { spacing, borderRadius, shadows } from '../theme/spacing';
-import Card from '../components/Card';
-import Button from '../components/Button';
+import { format } from 'date-fns';
 
 export default function HomeScreen({ navigation }: any) {
-  const { agent, logout } = useAuth();
-  const { isOnline, isSyncing, pendingCount, syncData } = useSync();
+  const { agent } = useAuth();
+  const { isOnline } = useSync();
+  const [currentDate, setCurrentDate] = useState(new Date());
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Déconnexion',
-      'Voulez-vous vraiment vous déconnecter ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Déconnexion', onPress: logout, style: 'destructive' },
-      ]
-    );
+  // Statistiques (à remplacer par des vraies données de l'API)
+  const stats = {
+    producteurs: { total: 127, growth: 12 },
+    plantations: { total: 89, growth: 5 },
+    recoltes: { total: 23 },
   };
 
-  const actionButtons = [
-    {
-      id: 'organisation',
-      title: 'Créer une Organisation',
-      icon: '🏢',
-      color: colors.primary,
-      onPress: () => navigation.navigate('Organisation'),
-    },
-    {
-      id: 'section',
-      title: 'Créer une Section',
-      icon: '📍',
-      color: colors.primary,
-      onPress: () => navigation.navigate('Section'),
-    },
-    {
-      id: 'village',
-      title: 'Enregistrer un Village',
-      icon: '🏘️',
-      color: colors.primary,
-      onPress: () => navigation.navigate('Village'),
-    },
-    {
-      id: 'producteur',
-      title: 'Enregistrer un Producteur',
-      icon: '👤',
-      color: colors.primary,
-      onPress: () => navigation.navigate('Producteur'),
-    },
-    {
-      id: 'parcelle',
-      title: 'Créer une Parcelle',
-      icon: '🗺️',
-      color: colors.primary,
-      onPress: () => navigation.navigate('Parcelle'),
-    },
-    {
-      id: 'collecte',
-      title: 'Nouvelle Collecte',
-      icon: '📦',
-      color: colors.secondary,
-      onPress: () => navigation.navigate('Collecte'),
-    },
-  ];
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentDate(new Date());
+    }, 60000); // Mise à jour chaque minute
 
-  return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header avec infos agent */}
-      <View style={styles.header}>
-        <View style={styles.avatarContainer}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {agent?.prenom?.[0]?.toUpperCase() || 'A'}
-            </Text>
-          </View>
+    return () => clearInterval(timer);
+  }, []);
+
+  const StatCard = ({ 
+    title, 
+    value, 
+    subtitle, 
+    growth, 
+    icon, 
+    iconColor 
+  }: {
+    title: string;
+    value: number;
+    subtitle: string;
+    growth?: number;
+    icon: string;
+    iconColor: string;
+  }) => (
+    <View style={styles.statCard}>
+      <View style={styles.statContent}>
+        <View style={styles.statLeft}>
+          <Text style={styles.statValue}>{value}</Text>
+          <Text style={styles.statSubtitle}>{subtitle}</Text>
+          {growth !== undefined && (
+            <View style={styles.growthContainer}>
+              <Icon name="arrow-up" size={14} color="#4CAF50" />
+              <Text style={styles.growthText}>+{growth}</Text>
+            </View>
+          )}
         </View>
-        <View style={styles.agentInfo}>
-          <Text style={styles.welcome}>Bonjour,</Text>
-          <Text style={styles.agentName}>
-            {agent?.prenom} {agent?.nom}
-          </Text>
-          <Text style={styles.agentCode}>Code: {agent?.code}</Text>
+        <View style={[styles.statIconContainer, { backgroundColor: iconColor + '20' }]}>
+          <Icon name={icon} size={32} color={iconColor} />
         </View>
       </View>
+    </View>
+  );
 
-      {/* Carte Synchronisation */}
-      <Card variant="elevated" style={styles.syncCard}>
-        <View style={styles.syncHeader}>
-          <Text style={styles.syncTitle}>Synchronisation</Text>
-          <View style={[styles.statusBadge, isOnline ? styles.statusOnline : styles.statusOffline]}>
-            <View style={[styles.statusDot, isOnline ? styles.statusDotOnline : styles.statusDotOffline]} />
-            <Text style={[styles.statusText, isOnline ? styles.statusTextOnline : styles.statusTextOffline]}>
-              {isOnline ? 'En ligne' : 'Hors ligne'}
-            </Text>
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#8B4513" />
+      
+      {/* Header avec barre marron */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Tableau de bord</Text>
+        <TouchableOpacity style={styles.notificationButton}>
+          <Icon name="bell" size={24} color="#fff" />
+          <View style={styles.notificationBadge}>
+            <Text style={styles.notificationBadgeText}>3</Text>
           </View>
-        </View>
-        
-        <View style={styles.syncInfo}>
-          <View style={styles.syncInfoRow}>
-            <Text style={styles.syncLabel}>Éléments en attente:</Text>
-            <View style={[styles.pendingBadge, pendingCount > 0 && styles.pendingBadgeActive]}>
-              <Text style={styles.pendingCount}>{pendingCount}</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Section utilisateur */}
+        <View style={styles.userSection}>
+          <View style={styles.userInfo}>
+            <Text style={styles.welcomeText}>Bonjour,</Text>
+            <Text style={styles.userName}>
+              {agent?.prenom || 'Jean'} {agent?.nom || 'Kouassi'}
+            </Text>
+            <View style={styles.dateWeatherRow}>
+              <Text style={styles.dateText}>
+                {format(currentDate, 'd MMMM yyyy')}
+              </Text>
+              <View style={styles.weatherContainer}>
+                <Icon name="weather-sunny" size={20} color="#FF6B35" />
+                <Text style={styles.temperatureText}>28°C</Text>
+              </View>
+            </View>
+          </View>
+          <View style={styles.avatarContainer}>
+            <View style={styles.avatar}>
+              <Icon name="account" size={40} color="#8B4513" />
             </View>
           </View>
         </View>
 
-        {pendingCount > 0 && (
-          <Button
-            title={isSyncing ? 'Synchronisation...' : 'Synchroniser maintenant'}
-            onPress={syncData}
-            loading={isSyncing}
-            disabled={!isOnline || isSyncing}
-            variant="primary"
-            size="md"
-            style={styles.syncButton}
+        {/* Section Statistiques */}
+        <View style={styles.statsSection}>
+          <Text style={styles.sectionTitle}>Statistiques</Text>
+          
+          <StatCard
+            title="Producteurs gérés"
+            value={stats.producteurs.total}
+            subtitle="Total enregistrés"
+            growth={stats.producteurs.growth}
+            icon="account-group"
+            iconColor="#8B4513"
           />
-        )}
-      </Card>
 
-      {/* Actions Rapides */}
-      <View style={styles.actionsSection}>
-        <Text style={styles.sectionTitle}>Actions Rapides</Text>
-        <View style={styles.actionsGrid}>
-          {actionButtons.map((action) => (
-            <TouchableOpacity
-              key={action.id}
-              style={[styles.actionCard, { borderLeftColor: action.color }]}
-              onPress={action.onPress}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.actionIcon}>{action.icon}</Text>
-              <Text style={styles.actionTitle}>{action.title}</Text>
-            </TouchableOpacity>
-          ))}
+          <StatCard
+            title="Plantations actives"
+            value={stats.plantations.total}
+            subtitle="En production"
+            growth={stats.plantations.growth}
+            icon="flag"
+            iconColor="#4CAF50"
+          />
+
+          <StatCard
+            title="Récoltes en attente"
+            value={stats.recoltes.total}
+            subtitle="À collecter"
+            icon="tractor"
+            iconColor="#FF6B35"
+          />
         </View>
-      </View>
-
-      {/* Déconnexion */}
-      <Button
-        title="Déconnexion"
-        onPress={handleLogout}
-        variant="outline"
-        size="md"
-        style={[styles.logoutButton, { borderColor: colors.error }]}
-        textStyle={{ color: colors.error }}
-      />
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#F5F5F5',
   },
   header: {
+    backgroundColor: '#8B4513',
+    paddingTop: 50,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  notificationButton: {
+    position: 'relative',
+    padding: 8,
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: '#FF6B35',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+  },
+  notificationBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  userSection: {
+    backgroundColor: '#fff',
+    padding: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  userInfo: {
+    flex: 1,
+  },
+  welcomeText: {
+    fontSize: 14,
+    color: '#999',
+    marginBottom: 4,
+  },
+  userName: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  dateWeatherRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.lg,
-    backgroundColor: colors.surface,
-    ...shadows.sm,
-    marginBottom: spacing.md,
+    gap: 16,
+  },
+  dateText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  weatherContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  temperatureText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '600',
   },
   avatarContainer: {
-    marginRight: spacing.md,
+    marginLeft: 16,
   },
   avatar: {
     width: 60,
     height: 60,
-    borderRadius: borderRadius.round,
-    backgroundColor: colors.primary,
+    borderRadius: 30,
+    backgroundColor: '#F5E6D3',
     justifyContent: 'center',
     alignItems: 'center',
-    ...shadows.md,
   },
-  avatarText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.textOnPrimary,
-  },
-  agentInfo: {
-    flex: 1,
-  },
-  welcome: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
-  },
-  agentName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginBottom: spacing.xs,
-  },
-  agentCode: {
-    fontSize: 12,
-    color: colors.textLight,
-  },
-  syncCard: {
-    marginHorizontal: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  syncHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  syncTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.text,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.round,
-    backgroundColor: colors.surfaceDark,
-  },
-  statusOnline: {
-    backgroundColor: colors.successLight + '20',
-  },
-  statusOffline: {
-    backgroundColor: colors.errorLight + '20',
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: borderRadius.round,
-    marginRight: spacing.xs,
-  },
-  statusDotOnline: {
-    backgroundColor: colors.success,
-  },
-  statusDotOffline: {
-    backgroundColor: colors.error,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  statusTextOnline: {
-    color: colors.success,
-  },
-  statusTextOffline: {
-    color: colors.error,
-  },
-  syncInfo: {
-    marginBottom: spacing.md,
-  },
-  syncInfoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  syncLabel: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  pendingBadge: {
-    minWidth: 32,
-    height: 32,
-    borderRadius: borderRadius.round,
-    backgroundColor: colors.surfaceDark,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-  },
-  pendingBadgeActive: {
-    backgroundColor: colors.warning + '20',
-  },
-  pendingCount: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: colors.warning,
-  },
-  syncButton: {
-    marginTop: spacing.sm,
-  },
-  actionsSection: {
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.lg,
+  statsSection: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: colors.text,
-    marginBottom: spacing.md,
+    color: '#333',
+    marginBottom: 16,
   },
-  actionsGrid: {
+  statCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  statContent: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  actionCard: {
-    width: '48%',
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    borderLeftWidth: 4,
-    ...shadows.sm,
+  statLeft: {
+    flex: 1,
   },
-  actionIcon: {
+  statValue: {
     fontSize: 32,
-    marginBottom: spacing.sm,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
   },
-  actionTitle: {
+  statSubtitle: {
     fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
-    lineHeight: 20,
+    color: '#999',
+    marginBottom: 8,
   },
-  logoutButton: {
-    marginHorizontal: spacing.md,
-    marginBottom: spacing.xl,
+  growthContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  growthText: {
+    fontSize: 14,
+    color: '#4CAF50',
+    fontWeight: '600',
+  },
+  statIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
