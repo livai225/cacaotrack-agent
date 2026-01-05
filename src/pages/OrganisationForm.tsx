@@ -88,10 +88,13 @@ export default function OrganisationForm() {
 
   // Load existing data when editing
   useEffect(() => {
+    let isMounted = true;
+    
     if (isEdit && id) {
       setIsLoading(true);
       api.getOrganisation(id)
         .then((org: any) => {
+          if (!isMounted) return;
           reset({
             type: org.type,
             nom: org.nom,
@@ -112,13 +115,22 @@ export default function OrganisationForm() {
           });
         })
         .catch((error) => {
+          if (!isMounted) return;
           console.error("Erreur chargement organisation:", error);
           toast.error("Erreur lors du chargement de l'organisation");
           navigate("/organisations");
         })
-        .finally(() => setIsLoading(false));
+        .finally(() => {
+          if (isMounted) {
+            setIsLoading(false);
+          }
+        });
     }
-  }, [id, isEdit, reset, navigate]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id, isEdit]);
 
   const handleNext = async () => {
     let isValid = false;
@@ -387,7 +399,7 @@ export default function OrganisationForm() {
         <Progress value={progress} className="h-2" />
       </div>
 
-      {isLoading && !isEdit ? (
+      {isLoading && isEdit ? (
         <div className="flex justify-center items-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
