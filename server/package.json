@@ -8,7 +8,8 @@
     "dev": "ts-node --transpile-only src/index.ts",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
-    "db:seed": "ts-node src/seed.ts"
+    "db:seed": "ts-node src/seed.ts",
+    "create-test-user": "ts-node --transpile-only scripts/create-test-user.ts"
   },
   "keywords": [],
   "author": "",

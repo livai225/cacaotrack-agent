@@ -161,6 +161,11 @@ class ApiService {
     return response.data;
   }
 
+  async getOperation(id: string) {
+    const response = await this.api.get(`/operations/${id}`);
+    return response.data;
+  }
+
   async createOperation(data: any) {
     const response = await this.api.post('/operations', data);
     return response.data;
@@ -168,6 +173,124 @@ class ApiService {
 
   async updateOperation(id: string, data: any) {
     const response = await this.api.put(`/operations/${id}`, data);
+    return response.data;
+  }
+
+  async deleteOperation(id: string) {
+    const response = await this.api.delete(`/operations/${id}`);
+    return response.data;
+  }
+
+  // ==================== AGENTS ====================
+  async getAgents() {
+    const response = await this.api.get('/agents');
+    return response.data;
+  }
+
+  async getAgent(id: string) {
+    const response = await this.api.get(`/agents/${id}`);
+    return response.data;
+  }
+
+  async getAgentStats(id: string) {
+    const response = await this.api.get(`/agents/${id}/stats`);
+    return response.data;
+  }
+
+  async updateAgentPassword(id: string, password: string) {
+    const response = await this.api.post(`/agents/${id}/password`, { password });
+    return response.data;
+  }
+
+  // ==================== REGIONS ====================
+  async getRegions() {
+    const response = await this.api.get('/regions');
+    return response.data;
+  }
+
+  async getRegion(id: string) {
+    const response = await this.api.get(`/regions/${id}`);
+    return response.data;
+  }
+
+  async getRegionAgents(id: string) {
+    const response = await this.api.get(`/regions/${id}/agents`);
+    return response.data;
+  }
+
+  // ==================== SECTIONS ====================
+  async getSection(id: string) {
+    const response = await this.api.get(`/sections/${id}`);
+    return response.data;
+  }
+
+  async updateSection(id: string, data: any) {
+    const response = await this.api.put(`/sections/${id}`, data);
+    return response.data;
+  }
+
+  async deleteSection(id: string) {
+    const response = await this.api.delete(`/sections/${id}`);
+    return response.data;
+  }
+
+  // ==================== VILLAGES ====================
+  async getVillage(id: string) {
+    const response = await this.api.get(`/villages/${id}`);
+    return response.data;
+  }
+
+  async updateVillage(id: string, data: any) {
+    const response = await this.api.put(`/villages/${id}`, data);
+    return response.data;
+  }
+
+  async deleteVillage(id: string) {
+    const response = await this.api.delete(`/villages/${id}`);
+    return response.data;
+  }
+
+  // ==================== PRODUCTEURS ====================
+  async getProducteur(id: string) {
+    const response = await this.api.get(`/producteurs/${id}`);
+    return response.data;
+  }
+
+  async updateProducteur(id: string, data: any) {
+    const response = await this.api.put(`/producteurs/${id}`, data);
+    return response.data;
+  }
+
+  async deleteProducteur(id: string) {
+    const response = await this.api.delete(`/producteurs/${id}`);
+    return response.data;
+  }
+
+  // ==================== PARCELLES ====================
+  async getParcelle(id: string) {
+    const response = await this.api.get(`/parcelles/${id}`);
+    return response.data;
+  }
+
+  async deleteParcelle(id: string) {
+    const response = await this.api.delete(`/parcelles/${id}`);
+    return response.data;
+  }
+
+  // ==================== ORGANISATIONS ====================
+  async getOrganisation(id: string) {
+    const response = await this.api.get(`/organisations/${id}`);
+    return response.data;
+  }
+
+  async deleteOrganisation(id: string) {
+    const response = await this.api.delete(`/organisations/${id}`);
+    return response.data;
+  }
+
+  // ==================== HEALTH ====================
+  async checkHealth() {
+    const response = await this.api.get('/health');
     return response.data;
   }
 }
