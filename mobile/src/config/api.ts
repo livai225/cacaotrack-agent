@@ -1,8 +1,12 @@
 // Configuration de l'API
+// Pour forcer l'utilisation de l'URL de production même en développement,
+// définir USE_PRODUCTION_API=true dans votre environnement ou modifier directement ci-dessous
+const USE_PRODUCTION_API = true; // Mettre à false pour utiliser l'URL locale en développement
+
 export const API_CONFIG = {
   // URL de l'API - À modifier selon l'environnement
-  BASE_URL: __DEV__ 
-    ? 'http://10.0.2.2:3000/api' // Émulateur Android
+  BASE_URL: (__DEV__ && !USE_PRODUCTION_API)
+    ? 'http://10.0.2.2:3000/api' // Émulateur Android (nécessite serveur local sur port 3000)
     : 'http://82.208.22.230/api', // Production (via Nginx proxy)
   
   TIMEOUT: 30000, // 30 secondes
