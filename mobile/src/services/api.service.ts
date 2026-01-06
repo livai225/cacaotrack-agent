@@ -48,7 +48,17 @@ class ApiService {
   // ==================== AUTH ====================
   async login(username: string, password: string) {
     try {
-      console.log('🔵 [API] Tentative de connexion:', { username, baseURL: this.api.defaults.baseURL });
+      const fullURL = `${this.api.defaults.baseURL}/auth/login`;
+      console.log('🔵 [API] Tentative de connexion:', { 
+        username, 
+        baseURL: this.api.defaults.baseURL,
+        fullURL,
+        timeout: this.api.defaults.timeout
+      });
+      
+      // Test de connectivité avant la requête
+      console.log('🔵 [API] Test de connectivité vers:', fullURL);
+      
       const response = await this.api.post('/auth/login', { username, password });
       console.log('✅ [API] Réponse reçue:', { status: response.status, hasAgent: !!response.data?.agent, hasToken: !!response.data?.token });
       
