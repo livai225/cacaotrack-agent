@@ -1422,6 +1422,170 @@ app.get('/api/agents', async (req, res) => {
   }
 });
 
+// ==================== LOCALISATION AGENTS (DOIT ÊTRE AVANT /api/agents/:id) ====================
+
+// Endpoint pour recevoir la position d'un agent (depuis l'app mobile)
+app.post('/api/agents/location', async (req, res) => {
+  try {
+    const { id_agent, latitude, longitude, accuracy, altitude, heading, speed, battery_level } = req.body;
+
+    if (!id_agent || latitude === undefined || longitude === undefined) {
+      return res.status(400).json({ error: "id_agent, latitude et longitude sont requis" });
+    }
+
+    // Vérifier que l'agent existe
+    const agent = await prisma.agent.findUnique({
+      where: { id: id_agent }
+    });
+
+    if (!agent) {
+      return res.status(404).json({ error: "Agent non trouvé" });
+    }
+
+    // Créer l'enregistrement de localisation
+    const location = await prisma.agentLocation.create({
+      data: {
+        id_agent,
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude),
+        accuracy: accuracy ? parseFloat(accuracy) : null,
+        altitude: altitude ? parseFloat(altitude) : null,
+        heading: heading ? parseFloat(heading) : null,
+        speed: speed ? parseFloat(speed) : null,
+        is_online: true,
+        battery_level: battery_level !== undefined ? parseInt(battery_level) : null
+      },
+      include: {
+        agent: {
+          select: {
+            id: true,
+            code: true,
+            nom: true,
+            prenom: true
+          }
+        }
+      }
+    });
+
+    console.log(`📍 Position enregistrée pour agent ${agent.code}: ${latitude}, ${longitude}`);
+
+    // Émettre l'événement temps réel
+    io.emit('agent_location_update', {
+      agent_id: id_agent,
+      agent_code: agent.code,
+      agent_nom: `${agent.nom} ${agent.prenom}`,
+      latitude: location.latitude,
+      longitude: location.longitude,
+      timestamp: location.createdAt
+    });
+
+    res.json(location);
+  } catch (error: any) {
+    console.error('❌ Erreur enregistrement localisation:', error);
+    res.status(500).json({ error: error.message || "Erreur enregistrement localisation" });
+  }
+});
+
+// Endpoint pour récupérer les dernières positions de tous les agents connectés
+app.get('/api/agents/locations', async (req, res) => {
+  try {
+    const { minutes = 30 } = req.query; // Par défaut, positions des 30 dernières minutes
+
+    const since = new Date();
+    since.setMinutes(since.getMinutes() - parseInt(minutes as string));
+
+    // Récupérer les dernières positions de chaque agent
+    const locations = await prisma.agentLocation.findMany({
+      where: {
+        createdAt: {
+          gte: since
+        },
+        is_online: true
+      },
+      include: {
+        agent: {
+          select: {
+            id: true,
+            code: true,
+            nom: true,
+            prenom: true,
+            telephone: true,
+            statut: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    // Grouper par agent et prendre la dernière position de chaque agent
+    const latestLocations = new Map();
+    locations.forEach(loc => {
+      if (!latestLocations.has(loc.id_agent) || 
+          new Date(loc.createdAt) > new Date(latestLocations.get(loc.id_agent).createdAt)) {
+        latestLocations.set(loc.id_agent, loc);
+      }
+    });
+
+    const result = Array.from(latestLocations.values()).map(loc => ({
+      id: loc.id,
+      agent: {
+        id: loc.agent.id,
+        code: loc.agent.code,
+        nom: loc.agent.nom,
+        prenom: loc.agent.prenom,
+        nom_complet: `${loc.agent.nom} ${loc.agent.prenom}`,
+        telephone: loc.agent.telephone,
+        statut: loc.agent.statut
+      },
+      latitude: loc.latitude,
+      longitude: loc.longitude,
+      accuracy: loc.accuracy,
+      altitude: loc.altitude,
+      heading: loc.heading,
+      speed: loc.speed,
+      battery_level: loc.battery_level,
+      is_online: loc.is_online,
+      timestamp: loc.createdAt,
+      last_seen: loc.createdAt
+    }));
+
+    res.json(result);
+  } catch (error: any) {
+    console.error('❌ Erreur récupération localisations:', error);
+    res.status(500).json({ error: error.message || "Erreur récupération localisations" });
+  }
+});
+
+// Endpoint pour récupérer l'historique des positions d'un agent spécifique
+app.get('/api/agents/:id/locations', async (req, res) => {
+  try {
+    const { hours = 24, limit = 100 } = req.query;
+
+    const since = new Date();
+    since.setHours(since.getHours() - parseInt(hours as string));
+
+    const locations = await prisma.agentLocation.findMany({
+      where: {
+        id_agent: req.params.id,
+        createdAt: {
+          gte: since
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      },
+      take: parseInt(limit as string)
+    });
+
+    res.json(locations);
+  } catch (error: any) {
+    console.error('❌ Erreur récupération historique:', error);
+    res.status(500).json({ error: error.message || "Erreur récupération historique" });
+  }
+});
+
 app.get('/api/agents/:id', async (req, res) => {
   try {
     const agent = await prisma.agent.findUnique({
@@ -1706,6 +1870,7 @@ app.get('/api/agents/:id/stats', async (req, res) => {
     res.status(500).json({ error: error.message || "Erreur calcul statistiques" });
   }
 });
+
 
 // ==================== RÉGIONS ====================
 
