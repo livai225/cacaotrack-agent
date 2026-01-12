@@ -1,55 +1,88 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import MapView from "@/components/maps/MapView";
-import { organisationService } from "@/services/organisationService";
-import { Map as MapIcon, Filter } from "lucide-react";
+import { agentService } from "@/services/agentService";
+import { Map as MapIcon, RefreshCw, Users, Battery, Clock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 type MapPoint = {
   id: string;
   latitude: number;
   longitude: number;
-  type: 'organisation' | 'producteur' | 'parcelle' | 'village';
+  type: 'organisation' | 'producteur' | 'parcelle' | 'village' | 'agent';
   nom: string;
   details?: string;
   produit?: 'cacao' | 'tomate' | 'hevea' | 'autre';
+  agent?: {
+    id: string;
+    code: string;
+    nom_complet: string;
+    telephone?: string;
+    statut?: string;
+  };
+  timestamp?: string;
+  battery_level?: number;
+  is_online?: boolean;
 };
 
 export default function CarteSuivi() {
+  const [searchParams] = useSearchParams();
+  const agentId = searchParams.get('agentId'); // Pour centrer sur un agent spécifique
   const [points, setPoints] = useState<MapPoint[]>([]);
-  const [filterType, setFilterType] = useState<string>("all");
-  const [filterProduit, setFilterProduit] = useState<string>("all");
+  const [isLoading, setIsLoading] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
   useEffect(() => {
-    loadMapData();
+    loadAgentLocations();
+    // Rafraîchir les positions des agents toutes les 30 secondes
+    const interval = setInterval(() => {
+      loadAgentLocations();
+    }, 30000); // 30 secondes
+
+    return () => clearInterval(interval);
   }, []);
 
-  const loadMapData = () => {
-    const organisations = organisationService.getAll();
-    
-    // Convertir les organisations en points de carte
-    const orgPoints: MapPoint[] = organisations
-      .filter(org => org.latitude && org.longitude)
-      .map(org => ({
-        id: org.id,
-        latitude: org.latitude!,
-        longitude: org.longitude!,
-        type: 'organisation' as const,
-        nom: org.nom,
-        details: `${org.type} - ${org.region}, ${org.departement}`,
-        produit: 'cacao' as const, // Par défaut, toutes les organisations sont liées au cacao
+  const loadAgentLocations = async () => {
+    setIsLoading(true);
+    try {
+      const locations = await agentService.getAgentLocations(30); // Positions des 30 dernières minutes
+      
+      // Convertir les positions en points de carte
+      const agentPoints: MapPoint[] = locations.map((loc: any) => ({
+        id: loc.id,
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+        type: 'agent' as const,
+        nom: loc.agent.nom_complet,
+        details: `Agent ${loc.agent.code} - ${loc.agent.telephone || 'N/A'}`,
+        agent: {
+          id: loc.agent.id,
+          code: loc.agent.code,
+          nom_complet: loc.agent.nom_complet,
+          telephone: loc.agent.telephone,
+          statut: loc.agent.statut,
+        },
+        timestamp: loc.timestamp || loc.last_seen,
+        battery_level: loc.battery_level,
+        is_online: loc.is_online,
       }));
 
-    setPoints(orgPoints);
+      setPoints(agentPoints);
+      setLastUpdate(new Date());
+    } catch (error) {
+      console.error('Erreur chargement positions agents:', error);
+      setPoints([]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // Filtrer les points
-  const filteredPoints = points.filter(point => {
-    const typeMatch = filterType === "all" || point.type === filterType;
-    const produitMatch = filterProduit === "all" || point.produit === filterProduit;
-    return typeMatch && produitMatch;
-  });
+  // Filtrer pour un agent spécifique si demandé
+  const filteredPoints = agentId 
+    ? points.filter(p => p.agent?.id === agentId)
+    : points;
 
   return (
     <div className="p-6 space-y-6">
@@ -57,98 +90,129 @@ export default function CarteSuivi() {
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
             <MapIcon className="h-8 w-8" />
-            Carte de Suivi
+            Position des Agents
           </h1>
           <p className="text-muted-foreground mt-1">
-            Visualisation géographique des organisations et producteurs
+            Suivi en temps réel de la localisation des agents connectés
           </p>
         </div>
+        <div className="flex gap-2 items-center">
+          {lastUpdate && (
+            <p className="text-sm text-muted-foreground">
+              Dernière mise à jour: {lastUpdate.toLocaleTimeString('fr-FR')}
+            </p>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => loadAgentLocations()}
+            disabled={isLoading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Actualiser
+          </Button>
+        </div>
       </div>
+
+      <MapView 
+        points={filteredPoints} 
+        height="600px" 
+        showLegend={true}
+        centerOnAgentId={agentId || undefined}
+      />
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Filtres
+            <Users className="h-5 w-5" />
+            Agents Connectés
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">Type d'entité</label>
-              <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les types</SelectItem>
-                  <SelectItem value="organisation">Organisations</SelectItem>
-                  <SelectItem value="producteur">Producteurs</SelectItem>
-                  <SelectItem value="parcelle">Parcelles</SelectItem>
-                  <SelectItem value="village">Villages</SelectItem>
-                </SelectContent>
-              </Select>
+          {points.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Aucun agent connecté pour le moment</p>
+              <p className="text-sm mt-2">Les positions apparaîtront ici lorsque les agents se connecteront</p>
             </div>
-
-            <div>
-              <label className="text-sm font-medium mb-2 block">Type de produit</label>
-              <Select value={filterProduit} onValueChange={setFilterProduit}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les produits</SelectItem>
-                  <SelectItem value="cacao">Cacao</SelectItem>
-                  <SelectItem value="tomate">Tomate</SelectItem>
-                  <SelectItem value="hevea">Hévéa</SelectItem>
-                  <SelectItem value="autre">Autre</SelectItem>
-                </SelectContent>
-              </Select>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {points.map((point) => (
+                  <Card key={point.id} className="border-l-4 border-l-primary">
+                    <CardContent className="pt-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-lg">{point.nom}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {point.agent?.code || 'N/A'}
+                          </p>
+                          {point.agent?.telephone && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              📞 {point.agent.telephone}
+                            </p>
+                          )}
+                        </div>
+                        <Badge variant={point.is_online ? "default" : "secondary"}>
+                          {point.is_online ? "En ligne" : "Hors ligne"}
+                        </Badge>
+                      </div>
+                      
+                      <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+                        {point.battery_level !== null && point.battery_level !== undefined && (
+                          <div className="flex items-center gap-2">
+                            <Battery className="h-4 w-4 text-muted-foreground" />
+                            <span>{point.battery_level}%</span>
+                          </div>
+                        )}
+                        {point.timestamp && (
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-xs">
+                              {new Date(point.timestamp).toLocaleString('fr-FR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="mt-2 text-xs text-muted-foreground">
+                        📍 {point.latitude.toFixed(6)}, {point.longitude.toFixed(6)}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </div>
-          </div>
-
-          <div className="mt-4 flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setFilterType("all");
-                setFilterProduit("all");
-              }}
-            >
-              Réinitialiser les filtres
-            </Button>
-          </div>
+          )}
         </CardContent>
       </Card>
-
-      <MapView points={filteredPoints} height="600px" showLegend={true} />
 
       <Card>
         <CardHeader>
           <CardTitle>Statistiques</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div className="text-center p-4 bg-muted rounded-lg">
               <p className="text-2xl font-bold text-primary">{points.length}</p>
-              <p className="text-sm text-muted-foreground">Points total</p>
+              <p className="text-sm text-muted-foreground">Agents connectés</p>
             </div>
             <div className="text-center p-4 bg-muted rounded-lg">
               <p className="text-2xl font-bold text-primary">
-                {points.filter(p => p.type === 'organisation').length}
+                {points.filter(p => p.is_online).length}
               </p>
-              <p className="text-sm text-muted-foreground">Organisations</p>
+              <p className="text-sm text-muted-foreground">En ligne</p>
             </div>
             <div className="text-center p-4 bg-muted rounded-lg">
               <p className="text-2xl font-bold text-primary">
-                {points.filter(p => p.produit === 'cacao').length}
+                {points.filter(p => p.battery_level !== null && p.battery_level !== undefined).length}
               </p>
-              <p className="text-sm text-muted-foreground">Cacao</p>
-            </div>
-            <div className="text-center p-4 bg-muted rounded-lg">
-              <p className="text-2xl font-bold text-primary">{filteredPoints.length}</p>
-              <p className="text-sm text-muted-foreground">Points filtrés</p>
+              <p className="text-sm text-muted-foreground">Avec batterie</p>
             </div>
           </div>
         </CardContent>

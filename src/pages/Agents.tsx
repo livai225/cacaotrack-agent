@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Search, Plus, User, MapPin, Loader2, Edit, Trash2 } from "lucide-react";
+import { Search, Plus, User, MapPin, Loader2, Edit, Trash2, Navigation } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { agentService } from "@/services/agentService";
 import type { Agent } from "@/types/agent";
@@ -160,6 +160,15 @@ export default function Agents() {
                       >
                         <Edit className="h-4 w-4" />
                         Modifier
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => navigate(`/carte?agentId=${agent.id}`)}
+                        title="Voir la position sur la carte"
+                      >
+                        <Navigation className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="outline"

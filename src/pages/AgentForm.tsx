@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, Save, Loader2, Search, X, User, IdCard, MapPin, Check } from "lucide-react";
+import { ArrowLeft, ArrowRight, Save, Loader2, Search, X, User, IdCard, MapPin, Check, Navigation } from "lucide-react";
 import PhotoCapture from "@/components/forms/PhotoCapture";
 import DateInput from "@/components/forms/DateInput";
 import { agentService } from "@/services/agentService";
@@ -439,9 +439,21 @@ export default function AgentForm() {
         Retour
       </Button>
 
-      <h1 className="text-3xl font-bold text-foreground mb-6">
-        {isEdit ? "Modifier l'Agent" : "Nouvel Agent"}
-      </h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-foreground">
+          {isEdit ? "Modifier l'Agent" : "Nouvel Agent"}
+        </h1>
+        {isEdit && id && (
+          <Button
+            variant="outline"
+            onClick={() => navigate(`/carte?agentId=${id}`)}
+            className="gap-2"
+          >
+            <Navigation className="h-4 w-4" />
+            Voir position sur la carte
+          </Button>
+        )}
+      </div>
 
       <div className="mb-8">
         <div className="flex justify-between items-center mb-4 overflow-x-auto pb-2">
