@@ -2,37 +2,39 @@ import React, { useState } from 'react';
 import {
   View,
   StyleSheet,
-  Image,
   KeyboardAvoidingView,
   Platform,
-  Alert,
+  Image,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
-import { TextInput, Button, Title, Text } from 'react-native-paper';
+import { TextInput, Button, Title, Text, HelperText } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function LoginScreen() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const { login } = useAuth();
 
   const handleLogin = async () => {
+    Keyboard.dismiss();
+    setError('');
+
     if (!username || !password) {
-      Alert.alert('Erreur', 'Veuillez remplir tous les champs');
+      setError('Veuillez remplir tous les champs');
       return;
     }
 
     setLoading(true);
     try {
       await login(username, password);
-    } catch (error: any) {
-      // Gérer les erreurs de manière plus claire
-      const errorMessage = error?.message || error?.response?.data?.error || error?.response?.data?.message || 'Identifiants incorrects';
-      Alert.alert(
-        'Erreur de connexion',
-        errorMessage
-      );
-      console.error('Détails erreur login:', error);
+    } catch (err: any) {
+      const errorMessage = err?.message || 'Une erreur est survenue.';
+      setError(errorMessage);
+      console.error('Détails erreur login:', err);
     } finally {
       setLoading(false);
     }
@@ -43,50 +45,64 @@ export default function LoginScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.content}>
-        {/* Logo */}
-        <View style={styles.logoContainer}>
-          <Title style={styles.title}>CacaoTrack</Title>
-          <Text style={styles.subtitle}>Agent de Terrain</Text>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.content}>
+          <View style={styles.logoContainer}>
+            {/* Vous pouvez décommenter et utiliser une image de logo si vous en avez une */}
+            {/* <Image source={require('../assets/logo.png')} style={styles.logo} /> */}
+            <Title style={styles.title}>fiedifoue moh</Title>
+          </View>
+
+          <View style={styles.form}>
+            <TextInput
+              label="Nom d'utilisateur"
+              value={username}
+              onChangeText={setUsername}
+              mode="outlined"
+              style={styles.input}
+              autoCapitalize="none"
+              left={<TextInput.Icon icon="account" />}
+              error={!!error}
+            />
+
+            <TextInput
+              label="Mot de passe"
+              value={password}
+              onChangeText={setPassword}
+              mode="outlined"
+              secureTextEntry={!isPasswordVisible}
+              style={styles.input}
+              left={<TextInput.Icon icon="lock" />}
+              right={
+                <TextInput.Icon 
+                  icon={isPasswordVisible ? 'eye-off' : 'eye'}
+                  onPress={() => setIsPasswordVisible(!isPasswordVisible)} 
+                />
+              }
+              error={!!error}
+            />
+
+            <HelperText type="error" visible={!!error} style={styles.errorText}>
+              {error}
+            </HelperText>
+
+            <Button
+              mode="contained"
+              onPress={handleLogin}
+              loading={loading}
+              disabled={loading}
+              style={styles.button}
+              labelStyle={styles.buttonLabel}
+              contentStyle={styles.buttonContent}
+              buttonColor="#8B4513"
+            >
+              Se connecter
+            </Button>
+          </View>
+
+          <Text style={styles.footer}>Version 1.0.0</Text>
         </View>
-
-        {/* Formulaire */}
-        <View style={styles.form}>
-          <TextInput
-            label="Nom d'utilisateur"
-            value={username}
-            onChangeText={setUsername}
-            mode="outlined"
-            style={styles.input}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-
-          <TextInput
-            label="Mot de passe"
-            value={password}
-            onChangeText={setPassword}
-            mode="outlined"
-            secureTextEntry
-            style={styles.input}
-          />
-
-          <Button
-            mode="contained"
-            onPress={handleLogin}
-            loading={loading}
-            disabled={loading}
-            style={styles.button}
-            buttonColor="#8B4513"
-          >
-            Se connecter
-          </Button>
-        </View>
-
-        <Text style={styles.footer}>
-          Version 1.0.0
-        </Text>
-      </View>
+      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 }
@@ -99,36 +115,59 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: 'center',
-    padding: 20,
+    paddingHorizontal: 20,
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 50,
+    marginBottom: 40,
+  },
+  logo: {
+    width: 100,
+    height: 100,
+    marginBottom: 20,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#8B4513',
+    fontFamily: Platform.OS === 'ios' ? 'Avenir-Heavy' : 'sans-serif-condensed',
+    textAlign: 'center',
+    flexWrap: 'wrap',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#666',
-    marginTop: 5,
+    marginTop: 4,
   },
   form: {
     width: '100%',
   },
   input: {
-    marginBottom: 15,
+    marginBottom: 8,
+    backgroundColor: '#FFFFFF',
+  },
+  errorText: {
+    fontSize: 14,
+    marginBottom: 10,
   },
   button: {
     marginTop: 10,
-    paddingVertical: 5,
+    borderRadius: 8,
+    elevation: 2,
+  },
+  buttonContent: {
+    paddingVertical: 8,
+  },
+  buttonLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   footer: {
     textAlign: 'center',
-    marginTop: 30,
-    color: '#999',
+    position: 'absolute',
+    bottom: 20,
+    width: '100%',
+    alignSelf: 'center',
+    color: '#A0A0A0',
   },
 });
-

@@ -303,6 +303,39 @@ class ApiService {
     const response = await this.api.get('/health');
     return response.data;
   }
+
+  // ==================== AGENT LOCATION ====================
+  async sendAgentLocation(data: {
+    id_agent: string;
+    latitude: number;
+    longitude: number;
+    accuracy?: number;
+    altitude?: number;
+    heading?: number;
+    speed?: number;
+    battery_level?: number;
+  }) {
+    try {
+      console.log('📍 [API] Envoi position:', { id_agent: data.id_agent, lat: data.latitude, lng: data.longitude });
+      const response = await this.api.post('/agents/location', data);
+      console.log('✅ [API] Position envoyée avec succès:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ [API] Erreur envoi localisation:', error?.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  // ==================== DASHBOARD STATS ====================
+  async getDashboardStats() {
+    try {
+      const response = await this.api.get('/dashboard/stats');
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ [API] Erreur récupération stats:', error);
+      throw error;
+    }
+  }
 }
 
 export const apiService = new ApiService();

@@ -47,7 +47,9 @@ export default function CarteSuivi() {
   const loadAgentLocations = async () => {
     setIsLoading(true);
     try {
+      console.log('📍 [Carte] Chargement des positions des agents...');
       const locations = await agentService.getAgentLocations(30); // Positions des 30 dernières minutes
+      console.log(`📍 [Carte] ${locations.length} position(s) reçue(s):`, locations);
       
       // Convertir les positions en points de carte
       const agentPoints: MapPoint[] = locations.map((loc: any) => ({
@@ -69,10 +71,12 @@ export default function CarteSuivi() {
         is_online: loc.is_online,
       }));
 
+      console.log(`✅ [Carte] ${agentPoints.length} point(s) agent créé(s)`);
       setPoints(agentPoints);
       setLastUpdate(new Date());
-    } catch (error) {
-      console.error('Erreur chargement positions agents:', error);
+    } catch (error: any) {
+      console.error('❌ [Carte] Erreur chargement positions agents:', error);
+      console.error('❌ [Carte] Détails:', error?.response?.data || error.message);
       setPoints([]);
     } finally {
       setIsLoading(false);

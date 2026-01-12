@@ -3,141 +3,254 @@ import {
   View,
   StyleSheet,
   ScrollView,
-  Text,
-  TouchableOpacity,
   StatusBar,
+  RefreshControl,
+  TouchableOpacity,
 } from 'react-native';
-import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
+import {
+  Text,
+  Card,
+  Avatar,
+  Title,
+  Paragraph,
+  Chip,
+  FAB,
+  Portal,
+  Provider as PaperProvider,
+  List,
+  Divider,
+} from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
 import { useSync } from '../contexts/SyncContext';
+import { apiService } from '../services/api.service';
 import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+
+interface DashboardStats {
+  producteurs: { total: number; growth: number };
+  plantations: { total: number; growth: number };
+  recoltes: { total: number };
+  organisations: { total: number };
+  sections: { total: number };
+  villages: { total: number };
+  operations: { total: number };
+}
 
 export default function HomeScreen({ navigation }: any) {
   const { agent } = useAuth();
   const { isOnline } = useSync();
-  const [currentDate, setCurrentDate] = useState(new Date());
-
-  // Statistiques (à remplacer par des vraies données de l'API)
-  const stats = {
-    producteurs: { total: 127, growth: 12 },
-    plantations: { total: 89, growth: 5 },
-    recoltes: { total: 23 },
-  };
+  const [refreshing, setRefreshing] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
+  const [stats, setStats] = useState<DashboardStats>({
+    producteurs: { total: 0, growth: 0 },
+    plantations: { total: 0, growth: 0 },
+    recoltes: { total: 0 },
+    organisations: { total: 0 },
+    sections: { total: 0 },
+    villages: { total: 0 },
+    operations: { total: 0 },
+  });
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentDate(new Date());
-    }, 60000); // Mise à jour chaque minute
-
-    return () => clearInterval(timer);
+    loadStats();
   }, []);
 
-  const StatCard = ({ 
-    title, 
-    value, 
-    subtitle, 
-    growth, 
-    icon, 
-    iconColor 
-  }: {
-    title: string;
-    value: number;
-    subtitle: string;
-    growth?: number;
-    icon: string;
-    iconColor: string;
-  }) => (
-    <View style={styles.statCard}>
-      <View style={styles.statContent}>
-        <View style={styles.statLeft}>
-          <Text style={styles.statValue}>{value}</Text>
-          <Text style={styles.statSubtitle}>{subtitle}</Text>
-          {growth !== undefined && (
-            <View style={styles.growthContainer}>
-              <Icon name="arrow-up" size={14} color="#4CAF50" />
-              <Text style={styles.growthText}>+{growth}</Text>
-            </View>
-          )}
+  const loadStats = async () => {
+    try {
+      setIsLoadingStats(true);
+      const data = await apiService.getDashboardStats();
+      setStats(data);
+    } catch (error) {
+      console.error('Erreur chargement stats:', error);
+    } finally {
+      setIsLoadingStats(false);
+    }
+  };
+
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await loadStats();
+    setRefreshing(false);
+  }, []);
+
+  const StatCard = ({ title, value, icon, subtitle, growth, color }: any) => (
+    <Card style={styles.card} elevation={2}>
+      <Card.Content style={styles.cardContent}>
+        <Avatar.Icon icon={icon} size={48} color={color} style={{ backgroundColor: `${color}20` }} />
+        <View style={styles.statTextContainer}>
+          <Title style={styles.statValue}>{value}</Title>
+          <Paragraph style={styles.statTitle}>{title}</Paragraph>
+          {growth && <Text style={styles.growthText}>+{growth} cette semaine</Text>}
         </View>
-        <View style={[styles.statIconContainer, { backgroundColor: iconColor + '20' }]}>
-          <Icon name={icon} size={32} color={iconColor} />
-        </View>
-      </View>
-    </View>
+      </Card.Content>
+    </Card>
   );
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#8B4513" />
-      
-      {/* Header avec barre marron */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Tableau de bord</Text>
-        <TouchableOpacity style={styles.notificationButton}>
-          <Icon name="bell" size={24} color="#fff" />
-          <View style={styles.notificationBadge}>
-            <Text style={styles.notificationBadgeText}>3</Text>
+    <PaperProvider>
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#6D4C41" />
+
+        {/* Header */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.welcomeText}>Bienvenue,</Text>
+            <Title style={styles.userName}>{agent?.prenom || 'Jean'} {agent?.nom || 'Kouassi'}</Title>
           </View>
-        </TouchableOpacity>
+          <Chip 
+            icon={isOnline ? "check-circle" : "alert-circle"} 
+            style={[styles.syncChip, { backgroundColor: isOnline ? '#E8F5E9' : '#FFEBEE' }]}
+            textStyle={{ color: isOnline ? '#2E7D32' : '#C62828' }}
+          >
+            {isOnline ? 'En ligne' : 'Hors ligne'}
+          </Chip>
+        </View>
+
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#8B4513']} />}
+        >
+          <View style={styles.content}>
+            {/* Date */}
+            <Paragraph style={styles.dateText}>
+              {format(new Date(), "EEEE, d MMMM yyyy", { locale: fr })}
+            </Paragraph>
+
+            {/* Statistiques */}
+            <Title style={styles.sectionTitle}>Vos statistiques</Title>
+            <StatCard 
+              title="Producteurs" 
+              value={isLoadingStats ? '...' : stats.producteurs.total} 
+              growth={stats.producteurs.growth}
+              icon="account-group" 
+              color="#8B4513"
+            />
+            <StatCard 
+              title="Plantations" 
+              value={isLoadingStats ? '...' : stats.plantations.total} 
+              growth={stats.plantations.growth}
+              icon="sprout" 
+              color="#4CAF50" 
+            />
+            <StatCard 
+              title="Récoltes en attente" 
+              value={isLoadingStats ? '...' : stats.recoltes.total} 
+              icon="tractor-variant" 
+              color="#FF9800"
+            />
+
+            {/* Liste des éléments créés */}
+            <Title style={[styles.sectionTitle, { marginTop: 30 }]}>Éléments créés</Title>
+            
+            <Card style={styles.card} elevation={2}>
+              <Card.Content>
+                <TouchableOpacity onPress={() => navigation.navigate('Organisation')}>
+                  <List.Item
+                    title="Organisations"
+                    description={`${stats.organisations.total} organisation${stats.organisations.total > 1 ? 's' : ''} - Créer une nouvelle`}
+                    left={props => <List.Icon {...props} icon="domain" color="#3b82f6" />}
+                    right={props => <Text style={styles.countText}>{stats.organisations.total}</Text>}
+                  />
+                </TouchableOpacity>
+                <Divider />
+                <TouchableOpacity onPress={() => navigation.navigate('Section')}>
+                  <List.Item
+                    title="Sections"
+                    description={`${stats.sections.total} section${stats.sections.total > 1 ? 's' : ''} - Créer une nouvelle`}
+                    left={props => <List.Icon {...props} icon="source-branch" color="#8b5cf6" />}
+                    right={props => <Text style={styles.countText}>{stats.sections.total}</Text>}
+                  />
+                </TouchableOpacity>
+                <Divider />
+                <TouchableOpacity onPress={() => navigation.navigate('Village')}>
+                  <List.Item
+                    title="Villages"
+                    description={`${stats.villages.total} village${stats.villages.total > 1 ? 's' : ''} - Créer un nouveau`}
+                    left={props => <List.Icon {...props} icon="home-group" color="#f59e0b" />}
+                    right={props => <Text style={styles.countText}>{stats.villages.total}</Text>}
+                  />
+                </TouchableOpacity>
+                <Divider />
+                <TouchableOpacity onPress={() => navigation.navigate('Producteur')}>
+                  <List.Item
+                    title="Producteurs"
+                    description={`${stats.producteurs.total} producteur${stats.producteurs.total > 1 ? 's' : ''} - Créer un nouveau`}
+                    left={props => <List.Icon {...props} icon="account-group" color="#8B4513" />}
+                    right={props => <Text style={styles.countText}>{stats.producteurs.total}</Text>}
+                  />
+                </TouchableOpacity>
+                <Divider />
+                <TouchableOpacity onPress={() => navigation.navigate('Parcelle')}>
+                  <List.Item
+                    title="Plantations"
+                    description={`${stats.plantations.total} plantation${stats.plantations.total > 1 ? 's' : ''} - Créer une nouvelle`}
+                    left={props => <List.Icon {...props} icon="sprout" color="#4CAF50" />}
+                    right={props => <Text style={styles.countText}>{stats.plantations.total}</Text>}
+                  />
+                </TouchableOpacity>
+                <Divider />
+                <TouchableOpacity onPress={() => navigation.navigate('Collecte')}>
+                  <List.Item
+                    title="Opérations"
+                    description={`${stats.operations.total} opération${stats.operations.total > 1 ? 's' : ''} - Créer une nouvelle`}
+                    left={props => <List.Icon {...props} icon="tractor-variant" color="#FF9800" />}
+                    right={props => <Text style={styles.countText}>{stats.operations.total}</Text>}
+                  />
+                </TouchableOpacity>
+              </Card.Content>
+            </Card>
+          </View>
+        </ScrollView>
+
+        {/* Actions Rapides */}
+        <Portal>
+          <FAB.Group
+            open={fabOpen}
+            icon={fabOpen ? 'close' : 'plus'}
+            actions={[
+              {
+                icon: 'domain',
+                label: 'Nouvelle Organisation',
+                onPress: () => navigation.navigate('Organisation'),
+              },
+              {
+                icon: 'source-branch',
+                label: 'Nouvelle Section',
+                onPress: () => navigation.navigate('Section'),
+              },
+              {
+                icon: 'home-group',
+                label: 'Nouveau Village',
+                onPress: () => navigation.navigate('Village'),
+              },
+              {
+                icon: 'account-plus',
+                label: 'Nouveau Producteur',
+                onPress: () => navigation.navigate('Producteur'),
+              },
+              {
+                icon: 'map-marker-plus',
+                label: 'Nouvelle Parcelle',
+                onPress: () => navigation.navigate('Parcelle'),
+              },
+              {
+                icon: 'tractor-variant',
+                label: 'Nouvelle Collecte',
+                onPress: () => navigation.navigate('Collecte'),
+              },
+            ]}
+            onStateChange={({ open }) => setFabOpen(open)}
+            onPress={() => {
+              if (fabOpen) {
+                // do something if the speed dial is open
+              }
+            }}
+          />
+        </Portal>
       </View>
-
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Section utilisateur */}
-        <View style={styles.userSection}>
-          <View style={styles.userInfo}>
-            <Text style={styles.welcomeText}>Bonjour,</Text>
-            <Text style={styles.userName}>
-              {agent?.prenom || 'Jean'} {agent?.nom || 'Kouassi'}
-            </Text>
-            <View style={styles.dateWeatherRow}>
-              <Text style={styles.dateText}>
-                {format(currentDate, 'd MMMM yyyy')}
-              </Text>
-              <View style={styles.weatherContainer}>
-                <Icon name="weather-sunny" size={20} color="#FF6B35" />
-                <Text style={styles.temperatureText}>28°C</Text>
-              </View>
-            </View>
-          </View>
-          <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <Icon name="account" size={40} color="#8B4513" />
-            </View>
-          </View>
-        </View>
-
-        {/* Section Statistiques */}
-        <View style={styles.statsSection}>
-          <Text style={styles.sectionTitle}>Statistiques</Text>
-          
-          <StatCard
-            title="Producteurs gérés"
-            value={stats.producteurs.total}
-            subtitle="Total enregistrés"
-            growth={stats.producteurs.growth}
-            icon="account-group"
-            iconColor="#8B4513"
-          />
-
-          <StatCard
-            title="Plantations actives"
-            value={stats.plantations.total}
-            subtitle="En production"
-            growth={stats.plantations.growth}
-            icon="flag"
-            iconColor="#4CAF50"
-          />
-
-          <StatCard
-            title="Récoltes en attente"
-            value={stats.recoltes.total}
-            subtitle="À collecter"
-            icon="tractor"
-            iconColor="#FF6B35"
-          />
-        </View>
-      </ScrollView>
-    </View>
+    </PaperProvider>
   );
 }
 
@@ -148,150 +261,73 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#8B4513',
-    paddingTop: 50,
-    paddingBottom: 16,
+    paddingVertical: 20,
     paddingHorizontal: 20,
+    paddingTop: 40,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
-  headerTitle: {
-    fontSize: 20,
+  welcomeText: {
+    fontSize: 16,
+    color: '#FFFFFFCC',
+  },
+  userName: {
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#FFFFFF',
   },
-  notificationButton: {
-    position: 'relative',
-    padding: 8,
-  },
-  notificationBadge: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    backgroundColor: '#FF6B35',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: 'center',
+  syncChip: {
+    height: 32,
     alignItems: 'center',
-    paddingHorizontal: 6,
-  },
-  notificationBadgeText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
+    justifyContent: 'center',
   },
   scrollView: {
     flex: 1,
   },
-  userSection: {
-    backgroundColor: '#fff',
+  content: {
     padding: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  userInfo: {
-    flex: 1,
-  },
-  welcomeText: {
-    fontSize: 14,
-    color: '#999',
-    marginBottom: 4,
-  },
-  userName: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
-  },
-  dateWeatherRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
   },
   dateText: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#666',
-  },
-  weatherContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  temperatureText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '600',
-  },
-  avatarContainer: {
-    marginLeft: 16,
-  },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#F5E6D3',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  statsSection: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    marginBottom: 20,
+    textAlign: 'center',
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 16,
+    marginBottom: 10,
   },
-  statCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  card: {
+    marginBottom: 15,
   },
-  statContent: {
+  cardContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    padding: 16,
   },
-  statLeft: {
-    flex: 1,
+  statTextContainer: {
+    marginLeft: 16,
   },
   statValue: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
   },
-  statSubtitle: {
-    fontSize: 14,
-    color: '#999',
-    marginBottom: 8,
-  },
-  growthContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+  statTitle: {
+    fontSize: 16,
+    color: '#666',
   },
   growthText: {
     fontSize: 14,
     color: '#4CAF50',
-    fontWeight: '600',
+    marginTop: 4,
   },
-  statIconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
+  countText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#666',
   },
 });
-

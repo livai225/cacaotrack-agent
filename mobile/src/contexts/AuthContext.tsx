@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiService } from '../services/api.service';
+import { locationService } from '../services/locationService';
 
 interface Agent {
   id: string;
@@ -36,6 +37,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loadStoredAuth();
   }, []);
 
+  // Démarrer le suivi si l'agent est déjà connecté au chargement
+  useEffect(() => {
+    if (agent?.id) {
+      console.log('📍 [Auth] Agent connecté, démarrage du suivi de localisation pour:', agent.id);
+      locationService.startTracking(agent.id).catch((error) => {
+        console.error('❌ [Auth] Erreur démarrage suivi localisation:', error);
+      });
+    } else {
+      console.log('📍 [Auth] Aucun agent connecté, arrêt du suivi de localisation');
+      locationService.stopTracking();
+    }
+    
+    // Cleanup: arrêter le suivi si l'agent se déconnecte
+    return () => {
+      if (!agent) {
+        locationService.stopTracking();
+      }
+    };
+  }, [agent]);
+
   const loadStoredAuth = async () => {
     try {
       const storedAgent = await AsyncStorage.getItem('agent');
@@ -63,6 +84,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await AsyncStorage.setItem('auth_token', response.token);
       
       setAgent(response.agent);
+
+      // Démarrer le suivi de localisation
+      if (response.agent.id) {
+        locationService.startTracking(response.agent.id);
+      }
     } catch (error: any) {
       console.error('Erreur login:', error);
       // Propager l'erreur avec un message clair
@@ -72,6 +98,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
     try {
+      // Arrêter le suivi de localisation
+      locationService.stopTracking();
+      
       await AsyncStorage.removeItem('agent');
       await AsyncStorage.removeItem('auth_token');
       setAgent(null);

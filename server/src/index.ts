@@ -1406,6 +1406,79 @@ app.delete('/api/operations/:id', async (req, res) => {
 
 // ==================== AGENTS ====================
 
+// Endpoint pour les statistiques du dashboard mobile
+app.get('/api/dashboard/stats', async (req, res) => {
+  try {
+    const [producteurs, parcelles, operations, organisations, sections, villages] = await Promise.all([
+      prisma.producteur.count(),
+      prisma.parcelle.count(),
+      prisma.operation.count(),
+      prisma.organisation.count(),
+      prisma.section.count(),
+      prisma.village.count(),
+    ]);
+
+    // Calculer les statistiques de la semaine (7 derniers jours)
+    const debutSemaine = new Date();
+    debutSemaine.setDate(debutSemaine.getDate() - 7);
+
+    const [producteursSemaine, parcellesSemaine] = await Promise.all([
+      prisma.producteur.count({
+        where: {
+          date_creation: {
+            gte: debutSemaine
+          }
+        }
+      }),
+      prisma.parcelle.count({
+        where: {
+          date_creation: {
+            gte: debutSemaine
+          }
+        }
+      }),
+    ]);
+
+    // Opérations en attente (statut = 'en_attente' ou similaire)
+    const operationsEnAttente = await prisma.operation.count({
+      where: {
+        statut: {
+          in: ['en_attente', 'pending', 'en_cours']
+        }
+      }
+    });
+
+    res.json({
+      producteurs: {
+        total: producteurs,
+        growth: producteursSemaine
+      },
+      plantations: {
+        total: parcelles,
+        growth: parcellesSemaine
+      },
+      recoltes: {
+        total: operationsEnAttente
+      },
+      organisations: {
+        total: organisations
+      },
+      sections: {
+        total: sections
+      },
+      villages: {
+        total: villages
+      },
+      operations: {
+        total: operations
+      }
+    });
+  } catch (error: any) {
+    console.error('❌ Erreur récupération stats dashboard:', error);
+    res.status(500).json({ error: error.message || "Erreur récupération statistiques" });
+  }
+});
+
 app.get('/api/agents', async (req, res) => {
   try {
     const agents = await prisma.agent.findMany({
@@ -1427,9 +1500,15 @@ app.get('/api/agents', async (req, res) => {
 // Endpoint pour recevoir la position d'un agent (depuis l'app mobile)
 app.post('/api/agents/location', async (req, res) => {
   try {
+    console.log('📍 [API] Requête de localisation reçue:', {
+      body: req.body,
+      headers: req.headers['content-type']
+    });
+
     const { id_agent, latitude, longitude, accuracy, altitude, heading, speed, battery_level } = req.body;
 
     if (!id_agent || latitude === undefined || longitude === undefined) {
+      console.error('❌ [API] Données manquantes:', { id_agent, latitude, longitude });
       return res.status(400).json({ error: "id_agent, latitude et longitude sont requis" });
     }
 
@@ -1439,8 +1518,11 @@ app.post('/api/agents/location', async (req, res) => {
     });
 
     if (!agent) {
+      console.error('❌ [API] Agent non trouvé:', id_agent);
       return res.status(404).json({ error: "Agent non trouvé" });
     }
+
+    console.log(`✅ [API] Agent trouvé: ${agent.code} (${agent.nom} ${agent.prenom})`);
 
     // Créer l'enregistrement de localisation
     const location = await prisma.agentLocation.create({
@@ -1467,7 +1549,7 @@ app.post('/api/agents/location', async (req, res) => {
       }
     });
 
-    console.log(`📍 Position enregistrée pour agent ${agent.code}: ${latitude}, ${longitude}`);
+    console.log(`✅ [API] Position enregistrée pour agent ${agent.code}: ${latitude}, ${longitude} (ID: ${location.id})`);
 
     // Émettre l'événement temps réel
     io.emit('agent_location_update', {
@@ -1481,7 +1563,8 @@ app.post('/api/agents/location', async (req, res) => {
 
     res.json(location);
   } catch (error: any) {
-    console.error('❌ Erreur enregistrement localisation:', error);
+    console.error('❌ [API] Erreur enregistrement localisation:', error);
+    console.error('❌ [API] Stack trace:', error.stack);
     res.status(500).json({ error: error.message || "Erreur enregistrement localisation" });
   }
 });
