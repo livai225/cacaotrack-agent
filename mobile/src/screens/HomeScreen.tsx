@@ -87,14 +87,13 @@ export default function HomeScreen({ navigation }: any) {
   };
 
   const quickActions = [
-    { icon: 'account-group', label: 'Producteurs', color: '#8B4513', count: stats.producteurs.total, onPress: () => navigation.navigate('ProducteursList') },
-    { icon: 'sprout', label: 'Plantations', color: '#4CAF50', count: stats.plantations.total, onPress: () => navigation.navigate('PlantationsList') },
-    { icon: 'tractor-variant', label: 'Récoltes', color: '#FF9800', count: stats.recoltes.total, onPress: () => navigation.navigate('RecoltesList') },
+    { icon: 'account-group', label: 'Producteurs', color: '#8B4513', count: stats.producteurs.total, onPress: () => navigation.navigate('Producteurs') },
+    { icon: 'sprout', label: 'Plantations', color: '#4CAF50', count: stats.plantations.total, onPress: () => navigation.navigate('Plantations') },
+    { icon: 'tractor-variant', label: 'Récoltes', color: '#FF9800', count: stats.recoltes.total, onPress: () => navigation.navigate('Récoltes') },
     { icon: 'domain', label: 'Organisations', color: '#3b82f6', count: stats.organisations.total, onPress: () => navigation.navigate('Organisation') },
     { icon: 'source-branch', label: 'Sections', color: '#8b5cf6', count: stats.sections.total, onPress: () => navigation.navigate('Section') },
     { icon: 'home-group', label: 'Villages', color: '#f59e0b', count: stats.villages.total, onPress: () => navigation.navigate('Village') },
     { icon: 'clipboard-list', label: 'Opérations', color: '#2196F3', count: stats.operations.total, onPress: () => navigation.navigate('Collecte') },
-    { icon: 'help-circle', label: 'Aide', color: '#ef4444', count: 0, onPress: () => {} },
   ];
 
   return (
@@ -107,7 +106,7 @@ export default function HomeScreen({ navigation }: any) {
           <View style={styles.headerTop}>
             <View style={styles.logoContainer}>
               <Icon name="sprout" size={28} color="#fff" />
-              <Text style={styles.appName}>CacaoTrack</Text>
+              <Text style={styles.appName}>ASCO Track</Text>
             </View>
             <Chip 
               icon={isOnline ? "check-circle" : "alert-circle"} 
@@ -194,13 +193,13 @@ export default function HomeScreen({ navigation }: any) {
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionTitle}>Mes statistiques</Text>
-                  <TouchableOpacity onPress={() => navigation.navigate('ProducteursList')}>
+                  <TouchableOpacity onPress={() => navigation.navigate('Producteurs')}>
                     <Text style={styles.seeAllText}>Voir tout</Text>
                   </TouchableOpacity>
                 </View>
 
                 <View style={styles.statsGrid}>
-                  <Card style={styles.statCard} onPress={() => navigation.navigate('ProducteursList')}>
+                  <Card style={styles.statCard} onPress={() => navigation.navigate('Producteurs')}>
                     <Card.Content style={styles.statCardContent}>
                       <View style={[styles.statIcon, { backgroundColor: '#8B451315' }]}>
                         <Icon name="account-group" size={24} color="#8B4513" />
@@ -215,7 +214,7 @@ export default function HomeScreen({ navigation }: any) {
                     </Card.Content>
                   </Card>
 
-                  <Card style={styles.statCard} onPress={() => navigation.navigate('PlantationsList')}>
+                  <Card style={styles.statCard} onPress={() => navigation.navigate('Plantations')}>
                     <Card.Content style={styles.statCardContent}>
                       <View style={[styles.statIcon, { backgroundColor: '#4CAF5015' }]}>
                         <Icon name="sprout" size={24} color="#4CAF50" />
@@ -230,7 +229,7 @@ export default function HomeScreen({ navigation }: any) {
                     </Card.Content>
                   </Card>
 
-                  <Card style={styles.statCard} onPress={() => navigation.navigate('RecoltesList')}>
+                  <Card style={styles.statCard} onPress={() => navigation.navigate('Récoltes')}>
                     <Card.Content style={styles.statCardContent}>
                       <View style={[styles.statIcon, { backgroundColor: '#FF980015' }]}>
                         <Icon name="tractor-variant" size={24} color="#FF9800" />
@@ -262,6 +261,21 @@ export default function HomeScreen({ navigation }: any) {
             open={fabOpen}
             icon={fabOpen ? 'close' : 'plus'}
             actions={[
+              {
+                icon: 'domain',
+                label: 'Nouvelle Organisation',
+                onPress: () => navigation.navigate('Organisation'),
+              },
+              {
+                icon: 'source-branch',
+                label: 'Nouvelle Section',
+                onPress: () => navigation.navigate('Section'),
+              },
+              {
+                icon: 'home-group',
+                label: 'Nouveau Village',
+                onPress: () => navigation.navigate('Village'),
+              },
               {
                 icon: 'account-plus',
                 label: 'Nouveau Producteur',

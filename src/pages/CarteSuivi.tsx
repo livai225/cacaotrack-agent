@@ -36,10 +36,10 @@ export default function CarteSuivi() {
 
   useEffect(() => {
     loadAgentLocations();
-    // Rafraîchir les positions des agents toutes les 30 secondes
+    // Rafraîchir les positions des agents toutes les 10 secondes pour une mise à jour plus rapide
     const interval = setInterval(() => {
       loadAgentLocations();
-    }, 30000); // 30 secondes
+    }, 10000); // 10 secondes pour une mise à jour plus rapide
 
     return () => clearInterval(interval);
   }, []);
