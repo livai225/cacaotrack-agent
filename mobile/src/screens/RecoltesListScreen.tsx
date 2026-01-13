@@ -10,22 +10,24 @@ import {
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { Card } from 'react-native-paper';
 import { apiService } from '../services/api.service';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function RecoltesListScreen({ navigation }: any) {
+  const { agent } = useAuth();
   const [recoltes, setRecoltes] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     loadRecoltes();
-  }, []);
+  }, [agent]);
 
   const loadRecoltes = async () => {
     try {
       setIsLoading(true);
-      const data = await apiService.getOperations();
+      const data = await apiService.getOperations(agent?.id);
       // Filtrer les récoltes en attente
       const enAttente = data.filter((op: any) => 
-        op.statut === 'En attente' || op.statut === 'En cours'
+        op.statut === 'En attente' || op.statut === 'En cours' || op.statut === 'Brouillon'
       );
       setRecoltes(enAttente);
     } catch (error) {

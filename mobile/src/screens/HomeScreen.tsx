@@ -7,26 +7,26 @@ import {
   RefreshControl,
   TouchableOpacity,
   Dimensions,
+  Image,
 } from 'react-native';
 import {
   Text,
   Card,
   Avatar,
   Title,
-  Paragraph,
   Chip,
   FAB,
   Portal,
   Provider as PaperProvider,
-  List,
-  Divider,
   ActivityIndicator,
+  Searchbar,
 } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
 import { useSync } from '../contexts/SyncContext';
 import { apiService } from '../services/api.service';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 
@@ -45,6 +45,7 @@ export default function HomeScreen({ navigation }: any) {
   const { isOnline } = useSync();
   const [refreshing, setRefreshing] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [stats, setStats] = useState<DashboardStats>({
     producteurs: { total: 0, growth: 0 },
     plantations: { total: 0, growth: 0 },
@@ -78,75 +79,73 @@ export default function HomeScreen({ navigation }: any) {
     setRefreshing(false);
   }, [agent]);
 
-  const StatCard = ({ title, value, icon, subtitle, growth, color, onPress }: any) => (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
-      <Card style={[styles.statCard, { borderLeftColor: color }]} elevation={2}>
-        <Card.Content style={styles.statCardContent}>
-          <View style={[styles.statIconContainer, { backgroundColor: `${color}15` }]}>
-            <Avatar.Icon 
-              icon={icon} 
-              size={40} 
-              style={{ backgroundColor: color }} 
-            />
-          </View>
-          <View style={styles.statTextContainer}>
-            <Text style={[styles.statValue, { color }]}>{value}</Text>
-            <Text style={styles.statTitle}>{title}</Text>
-            {subtitle && <Text style={styles.statSubtitle}>{subtitle}</Text>}
-            {growth !== undefined && growth > 0 && (
-              <View style={styles.growthContainer}>
-                <Text style={styles.growthText}>+{growth} cette semaine</Text>
-              </View>
-            )}
-          </View>
-        </Card.Content>
-      </Card>
-    </TouchableOpacity>
-  );
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Bonjour';
+    if (hour < 18) return 'Bon après-midi';
+    return 'Bonsoir';
+  };
 
-  const QuickActionCard = ({ title, count, icon, color, onPress }: any) => (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
-      <Card style={styles.quickActionCard} elevation={1}>
-        <Card.Content style={styles.quickActionContent}>
-          <Avatar.Icon 
-            icon={icon} 
-            size={36} 
-            style={{ backgroundColor: color }} 
-          />
-          <View style={styles.quickActionText}>
-            <Text style={styles.quickActionCount}>{count}</Text>
-            <Text style={styles.quickActionTitle}>{title}</Text>
-          </View>
-        </Card.Content>
-      </Card>
-    </TouchableOpacity>
-  );
+  const quickActions = [
+    { icon: 'account-group', label: 'Producteurs', color: '#8B4513', count: stats.producteurs.total, onPress: () => navigation.navigate('ProducteursList') },
+    { icon: 'sprout', label: 'Plantations', color: '#4CAF50', count: stats.plantations.total, onPress: () => navigation.navigate('PlantationsList') },
+    { icon: 'tractor-variant', label: 'Récoltes', color: '#FF9800', count: stats.recoltes.total, onPress: () => navigation.navigate('RecoltesList') },
+    { icon: 'domain', label: 'Organisations', color: '#3b82f6', count: stats.organisations.total, onPress: () => navigation.navigate('Organisation') },
+    { icon: 'source-branch', label: 'Sections', color: '#8b5cf6', count: stats.sections.total, onPress: () => navigation.navigate('Section') },
+    { icon: 'home-group', label: 'Villages', color: '#f59e0b', count: stats.villages.total, onPress: () => navigation.navigate('Village') },
+    { icon: 'clipboard-list', label: 'Opérations', color: '#2196F3', count: stats.operations.total, onPress: () => navigation.navigate('Collecte') },
+    { icon: 'help-circle', label: 'Aide', color: '#ef4444', count: 0, onPress: () => {} },
+  ];
 
   return (
     <PaperProvider>
       <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#6D4C41" />
+        <StatusBar barStyle="light-content" backgroundColor="#FF6B35" />
 
-        {/* Header */}
+        {/* Header Orange style EGOVERN */}
         <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <View style={styles.headerTextContainer}>
-              <Text style={styles.welcomeText}>Bienvenue,</Text>
-              <Title style={styles.userName}>
-                {agent?.prenom || 'Jean'} {agent?.nom || 'Kouassi'}
-              </Title>
-              <Text style={styles.dateText}>
-                {format(new Date(), "EEEE, d MMMM yyyy", { locale: fr })}
-              </Text>
+          <View style={styles.headerTop}>
+            <View style={styles.logoContainer}>
+              <Icon name="sprout" size={28} color="#fff" />
+              <Text style={styles.appName}>CacaoTrack</Text>
             </View>
             <Chip 
               icon={isOnline ? "check-circle" : "alert-circle"} 
               style={[styles.syncChip, { backgroundColor: isOnline ? '#E8F5E9' : '#FFEBEE' }]}
-              textStyle={{ color: isOnline ? '#2E7D32' : '#C62828', fontSize: 12 }}
+              textStyle={{ color: isOnline ? '#2E7D32' : '#C62828', fontSize: 11 }}
             >
               {isOnline ? 'En ligne' : 'Hors ligne'}
             </Chip>
           </View>
+
+          <View style={styles.profileSection}>
+            {agent?.photo ? (
+              <Avatar.Image 
+                size={56} 
+                source={{ uri: agent.photo }}
+                style={styles.avatar}
+              />
+            ) : (
+              <Avatar.Icon 
+                size={56} 
+                icon="account" 
+                style={styles.avatar}
+                color="#FF6B35"
+              />
+            )}
+            <View style={styles.profileText}>
+              <Text style={styles.greeting}>{getGreeting()}, {agent?.prenom || 'Agent'}!</Text>
+              <Text style={styles.subGreeting}>Que souhaitez-vous faire aujourd'hui ?</Text>
+            </View>
+          </View>
+
+          <Searchbar
+            placeholder="Rechercher un producteur, plantation..."
+            onChangeText={setSearchQuery}
+            value={searchQuery}
+            style={styles.searchbar}
+            inputStyle={styles.searchInput}
+          />
         </View>
 
         <ScrollView
@@ -156,180 +155,103 @@ export default function HomeScreen({ navigation }: any) {
             <RefreshControl 
               refreshing={refreshing} 
               onRefresh={onRefresh} 
-              colors={['#8B4513']} 
+              colors={['#FF6B35']} 
             />
           }
         >
           <View style={styles.content}>
-            {/* Statistiques principales */}
+            {/* Quick Actions Grid */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>📊 Mes statistiques</Text>
-              
-              {isLoadingStats ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color="#8B4513" />
-                </View>
-              ) : (
-                <>
-                  <StatCard 
-                    title="Villages" 
-                    value={stats.villages.total} 
-                    icon="home-group" 
-                    color="#f59e0b"
-                    onPress={() => navigation.navigate('Village')}
-                  />
-                  <StatCard 
-                    title="Sections" 
-                    value={stats.sections.total} 
-                    icon="source-branch" 
-                    color="#8b5cf6"
-                    onPress={() => navigation.navigate('Section')}
-                  />
-                  <StatCard 
-                    title="Producteurs" 
-                    value={stats.producteurs.total} 
-                    growth={stats.producteurs.growth}
-                    icon="account-group" 
-                    color="#8B4513"
-                    onPress={() => navigation.navigate('Producteur')}
-                  />
-                  <StatCard 
-                    title="Plantations" 
-                    value={stats.plantations.total} 
-                    growth={stats.plantations.growth}
-                    icon="sprout" 
-                    color="#4CAF50"
-                    onPress={() => navigation.navigate('Parcelle')}
-                  />
-                  <StatCard 
-                    title="Récoltes" 
-                    value={stats.recoltes.total} 
-                    icon="tractor-variant" 
-                    color="#FF9800"
-                    subtitle="En attente"
-                    onPress={() => navigation.navigate('Collecte')}
-                  />
-                  <StatCard 
-                    title="Opérations" 
-                    value={stats.operations.total} 
-                    growth={stats.operations.growth}
-                    icon="clipboard-list" 
-                    color="#2196F3"
-                    onPress={() => navigation.navigate('Collecte')}
-                  />
-                </>
-              )}
-            </View>
-
-            {/* Actions rapides */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>⚡ Actions rapides</Text>
+              <Text style={styles.sectionTitle}>Actions rapides</Text>
               <View style={styles.quickActionsGrid}>
-                <QuickActionCard
-                  title="Organisation"
-                  count={stats.organisations.total}
-                  icon="domain"
-                  color="#3b82f6"
-                  onPress={() => navigation.navigate('Organisation')}
-                />
-                <QuickActionCard
-                  title="Section"
-                  count={stats.sections.total}
-                  icon="source-branch"
-                  color="#8b5cf6"
-                  onPress={() => navigation.navigate('Section')}
-                />
-                <QuickActionCard
-                  title="Village"
-                  count={stats.villages.total}
-                  icon="home-group"
-                  color="#f59e0b"
-                  onPress={() => navigation.navigate('Village')}
-                />
-                <QuickActionCard
-                  title="Producteur"
-                  count={stats.producteurs.total}
-                  icon="account-plus"
-                  color="#8B4513"
-                  onPress={() => navigation.navigate('Producteur')}
-                />
-                <QuickActionCard
-                  title="Parcelle"
-                  count={stats.plantations.total}
-                  icon="map-marker-plus"
-                  color="#4CAF50"
-                  onPress={() => navigation.navigate('Parcelle')}
-                />
-                <QuickActionCard
-                  title="Collecte"
-                  count={stats.operations.total}
-                  icon="tractor-variant"
-                  color="#FF9800"
-                  onPress={() => navigation.navigate('Collecte')}
-                />
+                {quickActions.map((action, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.quickActionCard}
+                    onPress={action.onPress}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.quickActionIcon, { backgroundColor: `${action.color}15` }]}>
+                      <Icon name={action.icon} size={28} color={action.color} />
+                    </View>
+                    <Text style={styles.quickActionLabel}>{action.label}</Text>
+                    {action.count > 0 && (
+                      <View style={[styles.quickActionBadge, { backgroundColor: action.color }]}>
+                        <Text style={styles.quickActionBadgeText}>{action.count}</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
               </View>
             </View>
 
-            {/* Liste détaillée */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>📋 Détails</Text>
-              <Card style={styles.detailCard} elevation={2}>
-                <Card.Content>
-                  <TouchableOpacity onPress={() => navigation.navigate('Organisation')}>
-                    <List.Item
-                      title="Organisations"
-                      description={`${stats.organisations.total} organisation${stats.organisations.total > 1 ? 's' : ''}`}
-                      left={props => <List.Icon {...props} icon="domain" color="#3b82f6" />}
-                      right={props => <Text style={styles.countText}>{stats.organisations.total}</Text>}
-                    />
+            {/* Statistiques */}
+            {isLoadingStats ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#FF6B35" />
+              </View>
+            ) : (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Mes statistiques</Text>
+                  <TouchableOpacity onPress={() => navigation.navigate('ProducteursList')}>
+                    <Text style={styles.seeAllText}>Voir tout</Text>
                   </TouchableOpacity>
-                  <Divider />
-                  <TouchableOpacity onPress={() => navigation.navigate('Section')}>
-                    <List.Item
-                      title="Sections"
-                      description={`${stats.sections.total} section${stats.sections.total > 1 ? 's' : ''}`}
-                      left={props => <List.Icon {...props} icon="source-branch" color="#8b5cf6" />}
-                      right={props => <Text style={styles.countText}>{stats.sections.total}</Text>}
-                    />
-                  </TouchableOpacity>
-                  <Divider />
-                  <TouchableOpacity onPress={() => navigation.navigate('Village')}>
-                    <List.Item
-                      title="Villages"
-                      description={`${stats.villages.total} village${stats.villages.total > 1 ? 's' : ''}`}
-                      left={props => <List.Icon {...props} icon="home-group" color="#f59e0b" />}
-                      right={props => <Text style={styles.countText}>{stats.villages.total}</Text>}
-                    />
-                  </TouchableOpacity>
-                  <Divider />
-                  <TouchableOpacity onPress={() => navigation.navigate('Producteur')}>
-                    <List.Item
-                      title="Producteurs"
-                      description={`${stats.producteurs.total} producteur${stats.producteurs.total > 1 ? 's' : ''}`}
-                      left={props => <List.Icon {...props} icon="account-group" color="#8B4513" />}
-                      right={props => <Text style={styles.countText}>{stats.producteurs.total}</Text>}
-                    />
-                  </TouchableOpacity>
-                  <Divider />
-                  <TouchableOpacity onPress={() => navigation.navigate('Parcelle')}>
-                    <List.Item
-                      title="Plantations"
-                      description={`${stats.plantations.total} plantation${stats.plantations.total > 1 ? 's' : ''}`}
-                      left={props => <List.Icon {...props} icon="sprout" color="#4CAF50" />}
-                      right={props => <Text style={styles.countText}>{stats.plantations.total}</Text>}
-                    />
-                  </TouchableOpacity>
-                  <Divider />
-                  <TouchableOpacity onPress={() => navigation.navigate('Collecte')}>
-                    <List.Item
-                      title="Opérations"
-                      description={`${stats.operations.total} opération${stats.operations.total > 1 ? 's' : ''}`}
-                      left={props => <List.Icon {...props} icon="tractor-variant" color="#FF9800" />}
-                      right={props => <Text style={styles.countText}>{stats.operations.total}</Text>}
-                    />
-                  </TouchableOpacity>
-                </Card.Content>
-              </Card>
+                </View>
+
+                <View style={styles.statsGrid}>
+                  <Card style={styles.statCard} onPress={() => navigation.navigate('ProducteursList')}>
+                    <Card.Content style={styles.statCardContent}>
+                      <View style={[styles.statIcon, { backgroundColor: '#8B451315' }]}>
+                        <Icon name="account-group" size={24} color="#8B4513" />
+                      </View>
+                      <View style={styles.statText}>
+                        <Text style={styles.statValue}>{stats.producteurs.total}</Text>
+                        <Text style={styles.statLabel}>Producteurs</Text>
+                        {stats.producteurs.growth > 0 && (
+                          <Text style={styles.statGrowth}>+{stats.producteurs.growth} cette semaine</Text>
+                        )}
+                      </View>
+                    </Card.Content>
+                  </Card>
+
+                  <Card style={styles.statCard} onPress={() => navigation.navigate('PlantationsList')}>
+                    <Card.Content style={styles.statCardContent}>
+                      <View style={[styles.statIcon, { backgroundColor: '#4CAF5015' }]}>
+                        <Icon name="sprout" size={24} color="#4CAF50" />
+                      </View>
+                      <View style={styles.statText}>
+                        <Text style={styles.statValue}>{stats.plantations.total}</Text>
+                        <Text style={styles.statLabel}>Plantations</Text>
+                        {stats.plantations.growth > 0 && (
+                          <Text style={styles.statGrowth}>+{stats.plantations.growth} cette semaine</Text>
+                        )}
+                      </View>
+                    </Card.Content>
+                  </Card>
+
+                  <Card style={styles.statCard} onPress={() => navigation.navigate('RecoltesList')}>
+                    <Card.Content style={styles.statCardContent}>
+                      <View style={[styles.statIcon, { backgroundColor: '#FF980015' }]}>
+                        <Icon name="tractor-variant" size={24} color="#FF9800" />
+                      </View>
+                      <View style={styles.statText}>
+                        <Text style={styles.statValue}>{stats.recoltes.total}</Text>
+                        <Text style={styles.statLabel}>Récoltes</Text>
+                        <Text style={styles.statSubLabel}>En attente</Text>
+                      </View>
+                    </Card.Content>
+                  </Card>
+                </View>
+              </View>
+            )}
+
+            {/* Date */}
+            <View style={styles.dateContainer}>
+              <Icon name="calendar" size={16} color="#666" />
+              <Text style={styles.dateText}>
+                {format(new Date(), "EEEE, d MMMM yyyy", { locale: fr })}
+              </Text>
             </View>
           </View>
         </ScrollView>
@@ -341,33 +263,18 @@ export default function HomeScreen({ navigation }: any) {
             icon={fabOpen ? 'close' : 'plus'}
             actions={[
               {
-                icon: 'domain',
-                label: 'Organisation',
-                onPress: () => navigation.navigate('Organisation'),
-              },
-              {
-                icon: 'source-branch',
-                label: 'Section',
-                onPress: () => navigation.navigate('Section'),
-              },
-              {
-                icon: 'home-group',
-                label: 'Village',
-                onPress: () => navigation.navigate('Village'),
-              },
-              {
                 icon: 'account-plus',
-                label: 'Producteur',
+                label: 'Nouveau Producteur',
                 onPress: () => navigation.navigate('Producteur'),
               },
               {
                 icon: 'map-marker-plus',
-                label: 'Parcelle',
+                label: 'Nouvelle Parcelle',
                 onPress: () => navigation.navigate('Parcelle'),
               },
               {
                 icon: 'tractor-variant',
-                label: 'Collecte',
+                label: 'Nouvelle Collecte',
                 onPress: () => navigation.navigate('Collecte'),
               },
             ]}
@@ -390,40 +297,61 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
   },
   header: {
-    backgroundColor: '#8B4513',
-    paddingVertical: 24,
-    paddingHorizontal: 20,
+    backgroundColor: '#FF6B35',
     paddingTop: 50,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
     borderBottomLeftRadius: 25,
     borderBottomRightRadius: 25,
   },
-  headerContent: {
+  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    marginBottom: 16,
   },
-  headerTextContainer: {
-    flex: 1,
+  logoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  welcomeText: {
-    fontSize: 14,
-    color: '#FFFFFFAA',
-    marginBottom: 4,
-  },
-  userName: {
-    fontSize: 22,
+  appName: {
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 4,
-  },
-  dateText: {
-    fontSize: 12,
-    color: '#FFFFFFCC',
+    color: '#fff',
   },
   syncChip: {
     height: 28,
+  },
+  profileSection: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    marginBottom: 16,
+    gap: 12,
+  },
+  avatar: {
+    backgroundColor: '#fff',
+  },
+  profileText: {
+    flex: 1,
+  },
+  greeting: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  subGreeting: {
+    fontSize: 14,
+    color: '#FFFFFFCC',
+  },
+  searchbar: {
+    backgroundColor: '#fff',
+    elevation: 2,
+    borderRadius: 12,
+  },
+  searchInput: {
+    fontSize: 14,
   },
   scrollView: {
     flex: 1,
@@ -434,100 +362,123 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 24,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 12,
   },
-  loadingContainer: {
-    padding: 40,
+  seeAllText: {
+    fontSize: 14,
+    color: '#FF6B35',
+    fontWeight: '600',
+  },
+  quickActionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  quickActionCard: {
+    width: (width - 48) / 4,
     alignItems: 'center',
+    marginBottom: 12,
+  },
+  quickActionIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  quickActionLabel: {
+    fontSize: 12,
+    color: '#333',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  quickActionBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  quickActionBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  statsGrid: {
+    gap: 12,
   },
   statCard: {
-    marginBottom: 12,
+    marginBottom: 0,
     borderRadius: 12,
-    borderLeftWidth: 4,
-    backgroundColor: '#FFFFFF',
+    elevation: 2,
   },
   statCardContent: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
   },
-  statIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  statIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
   },
-  statTextContainer: {
+  statText: {
     flex: 1,
   },
   statValue: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
+    color: '#333',
     marginBottom: 4,
   },
-  statTitle: {
-    fontSize: 16,
+  statLabel: {
+    fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: '#666',
     marginBottom: 2,
   },
-  statSubtitle: {
+  statSubLabel: {
     fontSize: 12,
-    color: '#666',
-    marginTop: 2,
+    color: '#999',
   },
-  growthContainer: {
-    marginTop: 6,
-  },
-  growthText: {
+  statGrowth: {
     fontSize: 12,
     color: '#4CAF50',
+    marginTop: 4,
     fontWeight: '500',
   },
-  quickActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  quickActionCard: {
-    width: (width - 48) / 2,
-    marginBottom: 12,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-  },
-  quickActionContent: {
+  dateContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
   },
-  quickActionText: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  quickActionCount: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  quickActionTitle: {
-    fontSize: 12,
+  dateText: {
+    fontSize: 14,
     color: '#666',
-    marginTop: 2,
   },
-  detailCard: {
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-  },
-  countText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#666',
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
   },
 });

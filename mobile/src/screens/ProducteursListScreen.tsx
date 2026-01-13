@@ -10,19 +10,21 @@ import {
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { Card } from 'react-native-paper';
 import { apiService } from '../services/api.service';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function ProducteursListScreen({ navigation }: any) {
+  const { agent } = useAuth();
   const [producteurs, setProducteurs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     loadProducteurs();
-  }, []);
+  }, [agent]);
 
   const loadProducteurs = async () => {
     try {
       setIsLoading(true);
-      const data = await apiService.getProducteurs();
+      const data = await apiService.getProducteurs(agent?.id);
       setProducteurs(data);
     } catch (error) {
       console.error('Erreur chargement producteurs:', error);

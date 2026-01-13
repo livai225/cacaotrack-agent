@@ -10,19 +10,21 @@ import {
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { Card } from 'react-native-paper';
 import { apiService } from '../services/api.service';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function PlantationsListScreen({ navigation }: any) {
+  const { agent } = useAuth();
   const [plantations, setPlantations] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     loadPlantations();
-  }, []);
+  }, [agent]);
 
   const loadPlantations = async () => {
     try {
       setIsLoading(true);
-      const data = await apiService.getParcelles();
+      const data = await apiService.getParcelles(agent?.id);
       setPlantations(data);
     } catch (error) {
       console.error('Erreur chargement plantations:', error);

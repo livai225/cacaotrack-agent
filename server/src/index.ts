@@ -897,8 +897,55 @@ app.delete('/api/villages/:id', async (req, res) => {
 
 // Producteurs
 app.get('/api/producteurs', async (req, res) => {
-  const producteurs = await prisma.producteur.findMany();
-  res.json(producteurs);
+  try {
+    const { agentId } = req.query;
+    
+    // Si agentId fourni, filtrer par les opérations créées par cet agent
+    if (agentId) {
+      // Récupérer les producteurs liés aux opérations de l'agent
+      const operations = await prisma.operation.findMany({
+        where: { id_agent: agentId as string },
+        select: { id_producteur: true },
+        distinct: ['id_producteur']
+      });
+      
+      const producteurIds = operations.map(op => op.id_producteur);
+      
+      const producteurs = await prisma.producteur.findMany({
+        where: {
+          id: { in: producteurIds }
+        },
+        include: {
+          village: {
+            select: {
+              id: true,
+              nom: true,
+              id_section: true
+            }
+          }
+        }
+      });
+      
+      res.json(producteurs);
+    } else {
+      // Sinon, retourner tous les producteurs
+      const producteurs = await prisma.producteur.findMany({
+        include: {
+          village: {
+            select: {
+              id: true,
+              nom: true,
+              id_section: true
+            }
+          }
+        }
+      });
+      res.json(producteurs);
+    }
+  } catch (error: any) {
+    console.error('Erreur récupération producteurs:', error);
+    res.status(500).json({ error: error.message || "Erreur récupération producteurs" });
+  }
 });
 app.get('/api/producteurs/:id', async (req, res) => {
   const producteur = await prisma.producteur.findUnique({ where: { id: req.params.id } });
@@ -1020,8 +1067,55 @@ app.delete('/api/producteurs/:id', async (req, res) => {
 
 // Plantations (Parcelles)
 app.get('/api/parcelles', async (req, res) => {
-  const parcelles = await prisma.parcelle.findMany();
-  res.json(parcelles);
+  try {
+    const { agentId } = req.query;
+    
+    // Si agentId fourni, filtrer par les opérations créées par cet agent
+    if (agentId) {
+      // Récupérer les parcelles liées aux opérations de l'agent
+      const operations = await prisma.operation.findMany({
+        where: { id_agent: agentId as string },
+        select: { id_parcelle: true },
+        distinct: ['id_parcelle']
+      });
+      
+      const parcelleIds = operations.map(op => op.id_parcelle);
+      
+      const parcelles = await prisma.parcelle.findMany({
+        where: {
+          id: { in: parcelleIds }
+        },
+        include: {
+          producteur: {
+            select: {
+              id: true,
+              nom_complet: true,
+              code: true
+            }
+          }
+        }
+      });
+      
+      res.json(parcelles);
+    } else {
+      // Sinon, retourner toutes les parcelles
+      const parcelles = await prisma.parcelle.findMany({
+        include: {
+          producteur: {
+            select: {
+              id: true,
+              nom_complet: true,
+              code: true
+            }
+          }
+        }
+      });
+      res.json(parcelles);
+    }
+  } catch (error: any) {
+    console.error('Erreur récupération parcelles:', error);
+    res.status(500).json({ error: error.message || "Erreur récupération parcelles" });
+  }
 });
 app.get('/api/parcelles/:id', async (req, res) => {
   const parcelle = await prisma.parcelle.findUnique({ where: { id: req.params.id } });
@@ -1136,7 +1230,15 @@ app.delete('/api/parcelles/:id', async (req, res) => {
 // Operations
 app.get('/api/operations', async (req, res) => {
   try {
+    const { agentId } = req.query;
+    
+    const whereClause: any = {};
+    if (agentId) {
+      whereClause.id_agent = agentId as string;
+    }
+    
     const operations = await prisma.operation.findMany({
+      where: whereClause,
       include: {
         producteur: {
           select: {

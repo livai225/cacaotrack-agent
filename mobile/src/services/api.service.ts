@@ -139,8 +139,9 @@ class ApiService {
   }
 
   // ==================== PRODUCTEURS ====================
-  async getProducteurs() {
-    const response = await this.api.get('/producteurs');
+  async getProducteurs(agentId?: string) {
+    const params = agentId ? { agentId } : {};
+    const response = await this.api.get('/producteurs', { params });
     return response.data;
   }
 
@@ -150,8 +151,9 @@ class ApiService {
   }
 
   // ==================== PARCELLES ====================
-  async getParcelles() {
-    const response = await this.api.get('/parcelles');
+  async getParcelles(agentId?: string) {
+    const params = agentId ? { agentId } : {};
+    const response = await this.api.get('/parcelles', { params });
     return response.data;
   }
 
@@ -166,8 +168,9 @@ class ApiService {
   }
 
   // ==================== OPERATIONS ====================
-  async getOperations() {
-    const response = await this.api.get('/operations');
+  async getOperations(agentId?: string) {
+    const params = agentId ? { agentId } : {};
+    const response = await this.api.get('/operations', { params });
     return response.data;
   }
 
