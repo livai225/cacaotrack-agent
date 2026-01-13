@@ -110,6 +110,21 @@ app.get('/api/mysql', async (req, res) => {
 
 const JWT_SECRET = process.env.JWT_SECRET || 'cacaotrack-secret-key-change-in-production';
 
+// Middleware pour extraire l'agentId du token JWT (optionnel, ne bloque pas si absent)
+const extractAgentId = (req: any, res: any, next: any) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      const decoded: any = jwt.verify(token, JWT_SECRET);
+      req.agentId = decoded.agentId;
+    }
+  } catch (error) {
+    // Ignorer les erreurs de token (pour permettre les requêtes sans auth)
+  }
+  next();
+};
+
 // Route de login pour les agents (app mobile)
 app.post('/api/auth/login', async (req, res) => {
   try {
@@ -909,22 +924,26 @@ app.get('/api/producteurs', async (req, res) => {
         distinct: ['id_producteur']
       });
       
-      const producteurIds = operations.map(op => op.id_producteur);
+      const producteurIds = operations.map(op => op.id_producteur).filter(id => id !== null);
       
-      const producteurs = await prisma.producteur.findMany({
-        where: {
-          id: { in: producteurIds }
-        },
-        include: {
-          village: {
-            select: {
-              id: true,
-              nom: true,
-              id_section: true
+      // Si aucun producteur trouvé via les opérations, retourner un tableau vide
+      // (les producteurs créés récemment avec opération brouillon seront inclus)
+      const producteurs = producteurIds.length > 0 
+        ? await prisma.producteur.findMany({
+            where: {
+              id: { in: producteurIds }
+            },
+            include: {
+              village: {
+                select: {
+                  id: true,
+                  nom: true,
+                  id_section: true
+                }
+              }
             }
-          }
-        }
-      });
+          })
+        : [];
       
       res.json(producteurs);
     } else {
@@ -952,10 +971,12 @@ app.get('/api/producteurs/:id', async (req, res) => {
   res.json(producteur);
 });
 
-app.post('/api/producteurs', async (req, res) => {
+app.post('/api/producteurs', extractAgentId, async (req, res) => {
   try {
     const data = req.body;
+    const agentId = req.agentId || data.id_agent; // Récupérer l'agentId du token ou du body
     console.log('📥 Données reçues pour producteur:', JSON.stringify(data, null, 2));
+    console.log('👤 Agent ID:', agentId);
     
     // Validation des champs obligatoires
     if (!data.nom_complet) {
@@ -1013,6 +1034,27 @@ app.post('/api/producteurs', async (req, res) => {
     console.log('💾 Création producteur avec données:', JSON.stringify(producteurData, null, 2));
     const producteur = await prisma.producteur.create({ data: producteurData });
     console.log('✅ Producteur créé avec succès:', producteur.id);
+    
+    // Si un agentId est disponible, créer automatiquement une opération "brouillon" pour lier le producteur à l'agent
+    if (agentId) {
+      try {
+        const operation = await prisma.operation.create({
+          data: {
+            code: `OP-${Date.now()}`,
+            id_producteur: producteur.id,
+            id_agent: agentId,
+            statut: 'Brouillon',
+            type_operation: 'Enregistrement',
+            date_operation: new Date(),
+          }
+        });
+        console.log('✅ Opération brouillon créée pour lier le producteur à l\'agent:', operation.id);
+      } catch (opError: any) {
+        console.error('⚠️ Erreur création opération brouillon (non bloquant):', opError.message);
+        // Ne pas bloquer la création du producteur si l'opération échoue
+      }
+    }
+    
     res.json(producteur);
   } catch (error: any) {
     console.error('❌ Erreur création producteur:', error);
