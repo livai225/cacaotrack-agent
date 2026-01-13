@@ -100,7 +100,13 @@ export default function OrganisationDetails() {
             <div className="flex justify-between border-b pb-2"><span>Département</span> <b>{org.departement}</b></div>
             <div className="flex justify-between border-b pb-2"><span>Sous-Préfecture</span> <b>{org.sous_prefecture}</b></div>
             <div className="flex justify-between border-b pb-2"><span>Date Création</span> <b>{new Date(org.date_creation).toLocaleDateString()}</b></div>
-            <div className="flex justify-between"><span>Statut</span> <Badge variant={org.statut === 'actif' ? 'default' : 'secondary'}>{org.statut}</Badge></div>
+            <div className="flex justify-between border-b pb-2"><span>Statut</span> <Badge variant={org.statut === 'actif' ? 'default' : 'secondary'}>{org.statut}</Badge></div>
+            {(org as any).agent_creation && (
+              <div className="flex justify-between pt-2 border-t">
+                <span className="text-muted-foreground">Créé par</span>
+                <b className="text-sm">{(org as any).agent_creation.nom} {(org as any).agent_creation.prenom} ({(org as any).agent_creation.code})</b>
+              </div>
+            )}
           </CardContent>
         </Card>
 

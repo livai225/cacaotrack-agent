@@ -137,6 +137,15 @@ export default function Producteurs() {
                       <span>{producteur.cacao_superficie} Ha</span>
                     </div>
 
+                    {(producteur as any).agent_creation && (
+                      <div className="mt-2 pt-2 border-t border-border">
+                        <p className="text-xs text-muted-foreground">Créé par</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {(producteur as any).agent_creation.nom} {(producteur as any).agent_creation.prenom} ({(producteur as any).agent_creation.code})
+                        </p>
+                      </div>
+                    )}
+
                     <div className="mt-3 pt-3 border-t border-border">
                       <Button
                         variant="destructive"

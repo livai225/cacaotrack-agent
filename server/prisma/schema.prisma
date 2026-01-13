@@ -45,6 +45,10 @@ model Organisation {
   nb_sections           Int       @default(0)
   potentiel_production  Float     @default(0)
   
+  // Agent créateur
+  id_agent_creation     String?
+  agent_creation         Agent?    @relation("OrganisationCreatedBy", fields: [id_agent_creation], references: [id])
+  
   sections              Section[]
   
   createdAt             DateTime  @default(now())
@@ -68,7 +72,7 @@ model Section {
   president_nom         String
   president_contact     Json      // string[]
   secretaire_nom        String?
-  secretaire_contact    Json?     // string[]
+  secretaire_contact     Json?     // string[]
   magasinier_nom        String?
   magasinier_contact    Json?     // string[]
   peseur_nom            String?
@@ -96,6 +100,10 @@ model Section {
   comm_coop             Boolean   @default(true)
   comm_pisteur          Boolean   @default(false)
   comm_autre_coop       Boolean   @default(false)
+  
+  // Agent créateur
+  id_agent_creation     String?
+  agent_creation         Agent?    @relation("SectionCreatedBy", fields: [id_agent_creation], references: [id])
   
   villages              Village[]
 
@@ -160,6 +168,10 @@ model Village {
   wave                  Boolean   @default(false)
   microfinance          Boolean   @default(false)
 
+  // Agent créateur
+  id_agent_creation     String?
+  agent_creation         Agent?    @relation("VillageCreatedBy", fields: [id_agent_creation], references: [id])
+
   producteurs           Producteur[]
   operations            Operation[]
 
@@ -214,6 +226,10 @@ model Producteur {
   // Activités Annexes
   activite_secondaire   String?
   revenu_annuel_estime  Float?
+
+  // Agent créateur
+  id_agent_creation     String?
+  agent_creation         Agent?    @relation("ProducteurCreatedBy", fields: [id_agent_creation], references: [id])
 
   parcelles             Parcelle[]
   operations            Operation[]
@@ -295,6 +311,10 @@ model Parcelle {
   comm_pisteur          Boolean   @default(false)
   comm_autre_acheteur   Boolean   @default(false)
 
+  // Agent créateur
+  id_agent_creation     String?
+  agent_creation         Agent?    @relation("ParcelleCreatedBy", fields: [id_agent_creation], references: [id])
+
   operations            Operation[]
 
   createdAt             DateTime  @default(now())
@@ -338,6 +358,13 @@ model Agent {
   regions               AgentRegion[]
   operations            Operation[]
   locations             AgentLocation[] // Positions GPS
+  
+  // Relations pour les entités créées
+  organisations_created Organisation[] @relation("OrganisationCreatedBy")
+  sections_created      Section[]      @relation("SectionCreatedBy")
+  villages_created      Village[]      @relation("VillageCreatedBy")
+  producteurs_created   Producteur[]   @relation("ProducteurCreatedBy")
+  parcelles_created     Parcelle[]     @relation("ParcelleCreatedBy")
   
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt

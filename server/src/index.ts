@@ -236,7 +236,17 @@ app.post('/api/agents/:id/password', async (req, res) => {
 app.get('/api/organisations', async (req, res) => {
   try {
     const orgs = await prisma.organisation.findMany({
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      include: {
+        agent_creation: {
+          select: {
+            id: true,
+            code: true,
+            nom: true,
+            prenom: true
+          }
+        }
+      }
     });
     // S'assurer que les champs JSON sont correctement sérialisés pour MySQL
     const serializedOrgs = orgs.map(org => ({
@@ -269,7 +279,19 @@ app.get('/api/organisations', async (req, res) => {
 app.get('/api/organisations/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const org = await prisma.organisation.findUnique({ where: { id } });
+    const org = await prisma.organisation.findUnique({ 
+      where: { id },
+      include: {
+        agent_creation: {
+          select: {
+            id: true,
+            code: true,
+            nom: true,
+            prenom: true
+          }
+        }
+      }
+    });
 
     if (!org) {
       return res.status(404).json({ error: "Organisation non trouvée" });
@@ -301,10 +323,12 @@ app.get('/api/organisations/:id', async (req, res) => {
   }
 });
 
-app.post('/api/organisations', async (req, res) => {
+app.post('/api/organisations', extractAgentId, async (req, res) => {
   try {
     const data = req.body;
+    const agentId = req.agentId || data.id_agent; // Récupérer l'agentId du token ou du body
     console.log('📥 Données reçues pour organisation:', JSON.stringify(data, null, 2));
+    console.log('👤 Agent ID:', agentId);
     
     // Validation des champs obligatoires
     if (!data.nom) {
@@ -416,10 +440,25 @@ app.post('/api/organisations', async (req, res) => {
       
       // Métriques (le champ photo n'existe pas dans le schéma Organisation, on l'ignore)
       potentiel_production: data.potentiel_production ? parseFloat(data.potentiel_production) : 0,
+      
+      // Agent créateur
+      id_agent_creation: agentId || null,
     };
 
     console.log('💾 Création organisation avec données:', JSON.stringify(orgData, null, 2));
-    const org = await prisma.organisation.create({ data: orgData });
+    const org = await prisma.organisation.create({ 
+      data: orgData,
+      include: {
+        agent_creation: {
+          select: {
+            id: true,
+            code: true,
+            nom: true,
+            prenom: true
+          }
+        }
+      }
+    });
     console.log('✅ Organisation créée avec succès:', org.id);
     res.json(org);
   } catch (error: any) {
@@ -598,18 +637,43 @@ app.delete('/api/organisations/:id', async (req, res) => {
 
 // Sections
 app.get('/api/sections', async (req, res) => {
-  const sections = await prisma.section.findMany();
+  const sections = await prisma.section.findMany({
+    include: {
+      agent_creation: {
+        select: {
+          id: true,
+          code: true,
+          nom: true,
+          prenom: true
+        }
+      }
+    }
+  });
   res.json(sections);
 });
 app.get('/api/sections/:id', async (req, res) => {
-  const section = await prisma.section.findUnique({ where: { id: req.params.id } });
+  const section = await prisma.section.findUnique({ 
+    where: { id: req.params.id },
+    include: {
+      agent_creation: {
+        select: {
+          id: true,
+          code: true,
+          nom: true,
+          prenom: true
+        }
+      }
+    }
+  });
   res.json(section);
 });
 
-app.post('/api/sections', async (req, res) => {
+app.post('/api/sections', extractAgentId, async (req, res) => {
   try {
     const data = req.body;
+    const agentId = req.agentId || data.id_agent; // Récupérer l'agentId du token ou du body
     console.log('📥 Données reçues pour section:', JSON.stringify(data, null, 2));
+    console.log('👤 Agent ID:', agentId);
     
     // Validation des champs obligatoires
     if (!data.nom) {
@@ -670,10 +734,25 @@ app.post('/api/sections', async (req, res) => {
       magasinier_contact: data.magasinier_contact ? (Array.isArray(data.magasinier_contact) ? data.magasinier_contact : [data.magasinier_contact]) : null,
       peseur_nom: data.peseur_nom || null,
       peseur_contact: data.peseur_contact ? (Array.isArray(data.peseur_contact) ? data.peseur_contact : [data.peseur_contact]) : null,
+      
+      // Agent créateur
+      id_agent_creation: agentId || null,
     };
 
     console.log('💾 Création section avec données:', JSON.stringify(sectionData, null, 2));
-    const section = await prisma.section.create({ data: sectionData });
+    const section = await prisma.section.create({ 
+      data: sectionData,
+      include: {
+        agent_creation: {
+          select: {
+            id: true,
+            code: true,
+            nom: true,
+            prenom: true
+          }
+        }
+      }
+    });
     console.log('✅ Section créée avec succès:', section.id);
     res.json(section);
   } catch (error: any) {
@@ -730,7 +809,18 @@ app.delete('/api/sections/:id', async (req, res) => {
 // Villages
 app.get('/api/villages', async (req, res) => {
   try {
-    const villages = await prisma.village.findMany();
+    const villages = await prisma.village.findMany({
+      include: {
+        agent_creation: {
+          select: {
+            id: true,
+            code: true,
+            nom: true,
+            prenom: true
+          }
+        }
+      }
+    });
     res.json(villages);
   } catch (error: any) {
     console.error('❌ Erreur récupération villages:', error);
@@ -742,7 +832,19 @@ app.get('/api/villages', async (req, res) => {
 });
 app.get('/api/villages/:id', async (req, res) => {
   try {
-    const village = await prisma.village.findUnique({ where: { id: req.params.id } });
+    const village = await prisma.village.findUnique({ 
+      where: { id: req.params.id },
+      include: {
+        agent_creation: {
+          select: {
+            id: true,
+            code: true,
+            nom: true,
+            prenom: true
+          }
+        }
+      }
+    });
     if (!village) {
       return res.status(404).json({ error: "Village non trouvé" });
     }
@@ -756,10 +858,12 @@ app.get('/api/villages/:id', async (req, res) => {
   }
 });
 
-app.post('/api/villages', async (req, res) => {
+app.post('/api/villages', extractAgentId, async (req, res) => {
   try {
     const data = req.body;
+    const agentId = req.agentId || data.id_agent; // Récupérer l'agentId du token ou du body
     console.log('📥 Données reçues pour village:', JSON.stringify(data, null, 2));
+    console.log('👤 Agent ID:', agentId);
     
     // Validation des champs obligatoires
     if (!data.nom) {
@@ -851,11 +955,24 @@ app.post('/api/villages', async (req, res) => {
       flooz_moov: data.flooz_moov || false,
       wave: data.wave || false,
       microfinance: data.microfinance || false,
+      
+      // Agent créateur
+      id_agent_creation: agentId || null,
     };
 
     console.log('💾 Création village avec données:', JSON.stringify(villageData, null, 2));
     const village = await prisma.village.create({ 
-      data: villageData as Prisma.VillageUncheckedCreateInput 
+      data: villageData as Prisma.VillageUncheckedCreateInput,
+      include: {
+        agent_creation: {
+          select: {
+            id: true,
+            code: true,
+            nom: true,
+            prenom: true
+          }
+        }
+      }
     });
     console.log('✅ Village créé avec succès:', village.id);
     res.json(village);
@@ -956,6 +1073,14 @@ app.get('/api/producteurs', async (req, res) => {
               nom: true,
               id_section: true
             }
+          },
+          agent_creation: {
+            select: {
+              id: true,
+              code: true,
+              nom: true,
+              prenom: true
+            }
           }
         }
       });
@@ -1029,10 +1154,25 @@ app.post('/api/producteurs', extractAgentId, async (req, res) => {
       
       // Photo
       photo_planteur: data.photo || data.photo_planteur || null,
+      
+      // Agent créateur
+      id_agent_creation: agentId || null,
     };
 
     console.log('💾 Création producteur avec données:', JSON.stringify(producteurData, null, 2));
-    const producteur = await prisma.producteur.create({ data: producteurData });
+    const producteur = await prisma.producteur.create({ 
+      data: producteurData,
+      include: {
+        agent_creation: {
+          select: {
+            id: true,
+            code: true,
+            nom: true,
+            prenom: true
+          }
+        }
+      }
+    });
     console.log('✅ Producteur créé avec succès:', producteur.id);
     
     // Si un agentId est disponible, créer automatiquement une opération "brouillon" pour lier le producteur à l'agent
@@ -1134,6 +1274,14 @@ app.get('/api/parcelles', async (req, res) => {
               nom_complet: true,
               code: true
             }
+          },
+          agent_creation: {
+            select: {
+              id: true,
+              code: true,
+              nom: true,
+              prenom: true
+            }
           }
         }
       });
@@ -1149,6 +1297,14 @@ app.get('/api/parcelles', async (req, res) => {
               nom_complet: true,
               code: true
             }
+          },
+          agent_creation: {
+            select: {
+              id: true,
+              code: true,
+              nom: true,
+              prenom: true
+            }
           }
         }
       });
@@ -1160,14 +1316,28 @@ app.get('/api/parcelles', async (req, res) => {
   }
 });
 app.get('/api/parcelles/:id', async (req, res) => {
-  const parcelle = await prisma.parcelle.findUnique({ where: { id: req.params.id } });
+  const parcelle = await prisma.parcelle.findUnique({ 
+    where: { id: req.params.id },
+    include: {
+      agent_creation: {
+        select: {
+          id: true,
+          code: true,
+          nom: true,
+          prenom: true
+        }
+      }
+    }
+  });
   res.json(parcelle);
 });
 
-app.post('/api/parcelles', async (req, res) => {
+app.post('/api/parcelles', extractAgentId, async (req, res) => {
   try {
     const data = req.body;
+    const agentId = req.agentId || data.id_agent; // Récupérer l'agentId du token ou du body
     console.log('📥 Données reçues pour parcelle:', JSON.stringify(data, null, 2));
+    console.log('👤 Agent ID:', agentId);
     
     // Validation des champs obligatoires
     if (!data.code) {
@@ -1212,10 +1382,25 @@ app.post('/api/parcelles', async (req, res) => {
       type_document: data.type_document || null,
       densite_pieds_hectare: data.densite_pieds_hectare ? parseInt(data.densite_pieds_hectare) : null,
       culture_intercalaire: data.culture_intercalaire || null,
+      
+      // Agent créateur
+      id_agent_creation: agentId || null,
     };
 
     console.log('💾 Création parcelle avec données:', JSON.stringify(parcelleData, null, 2));
-    const parcelle = await prisma.parcelle.create({ data: parcelleData });
+    const parcelle = await prisma.parcelle.create({ 
+      data: parcelleData,
+      include: {
+        agent_creation: {
+          select: {
+            id: true,
+            code: true,
+            nom: true,
+            prenom: true
+          }
+        }
+      }
+    });
     console.log('✅ Parcelle créée avec succès:', parcelle.id);
     res.json(parcelle);
   } catch (error: any) {

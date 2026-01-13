@@ -204,6 +204,19 @@ export default function ProducteurDetails() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Informations système */}
+          {(producteur as any).agent_creation && (
+            <Card>
+              <CardHeader><CardTitle>Informations Système</CardTitle></CardHeader>
+              <CardContent>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Créé par</span>
+                  <b className="text-sm">{(producteur as any).agent_creation.nom} {(producteur as any).agent_creation.prenom} ({(producteur as any).agent_creation.code})</b>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
       </div>

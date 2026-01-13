@@ -154,6 +154,15 @@ export default function Plantations() {
                     </span>
                   </div>
 
+                  {(plantation as any).agent_creation && (
+                    <div className="mt-2 pt-2 border-t border-border">
+                      <p className="text-xs text-muted-foreground">Créé par</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {(plantation as any).agent_creation.nom} {(plantation as any).agent_creation.prenom} ({(plantation as any).agent_creation.code})
+                      </p>
+                    </div>
+                  )}
+
                   <div className="flex gap-2 mt-2 flex-wrap">
                     {plantation.maladie_pourriture_brune !== 'Inexistant' && (
                       <Badge variant="outline" className="text-[10px] border-orange-200 text-orange-700 bg-orange-50">

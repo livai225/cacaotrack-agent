@@ -186,6 +186,19 @@ export default function PlantationDetails() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Informations système */}
+          {(parcelle as any).agent_creation && (
+            <Card>
+              <CardHeader><CardTitle>Informations Système</CardTitle></CardHeader>
+              <CardContent>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Créé par</span>
+                  <b className="text-sm">{(parcelle as any).agent_creation.nom} {(parcelle as any).agent_creation.prenom} ({(parcelle as any).agent_creation.code})</b>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
       </div>

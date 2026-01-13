@@ -159,6 +159,15 @@ export default function Organisations() {
                       </div>
                     </div>
 
+                    {(org as any).agent_creation && (
+                      <div className="mt-2 pt-2 border-t border-border">
+                        <p className="text-xs text-muted-foreground">Créé par</p>
+                        <p className="text-sm font-medium text-foreground">
+                          {(org as any).agent_creation.nom} {(org as any).agent_creation.prenom} ({(org as any).agent_creation.code})
+                        </p>
+                      </div>
+                    )}
+
                     <div className="mt-3 pt-3 border-t border-border">
                       <Button
                         variant="outline"
