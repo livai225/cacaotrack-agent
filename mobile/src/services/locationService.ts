@@ -6,7 +6,7 @@ class LocationService {
   private intervalId: NodeJS.Timeout | null = null;
   private isRunning: boolean = false;
   private agentId: string | null = null;
-  private readonly INTERVAL_MS = 25 * 60 * 1000; // 25 minutes en millisecondes
+  private readonly INTERVAL_MS = 30 * 60 * 1000; // 30 minutes en millisecondes
 
   /**
    * Démarrer le suivi de localisation pour un agent
@@ -33,12 +33,12 @@ class LocationService {
     // Envoyer la position immédiatement
     await this.sendCurrentLocation();
 
-    // Programmer l'envoi périodique toutes les 25 minutes
+    // Programmer l'envoi périodique toutes les 30 minutes
     this.intervalId = setInterval(() => {
       this.sendCurrentLocation();
     }, this.INTERVAL_MS);
 
-    console.log(`✅ [Location] Suivi démarré pour l'agent ${agentId} (intervalle: 25 min)`);
+    console.log(`✅ [Location] Suivi démarré pour l'agent ${agentId} (intervalle: 30 min)`);
   }
 
   /**
