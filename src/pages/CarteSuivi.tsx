@@ -36,10 +36,10 @@ export default function CarteSuivi() {
 
   useEffect(() => {
     loadAgentLocations();
-    // Rafraîchir les positions des agents toutes les 10 secondes pour une mise à jour plus rapide
+    // Rafraîchir les positions des agents toutes les 15 secondes pour un affichage en temps réel
     const interval = setInterval(() => {
       loadAgentLocations();
-    }, 10000); // 10 secondes pour une mise à jour plus rapide
+    }, 15000); // 15 secondes pour un affichage en temps réel
 
     return () => clearInterval(interval);
   }, []);
@@ -48,7 +48,7 @@ export default function CarteSuivi() {
     setIsLoading(true);
     try {
       console.log('📍 [Carte] Chargement des positions des agents...');
-      const locations = await agentService.getAgentLocations(30); // Positions des 30 dernières minutes
+      const locations = await agentService.getAgentLocations(60); // Positions des 60 dernières minutes pour s'assurer de récupérer toutes les positions
       console.log(`📍 [Carte] ${locations.length} position(s) reçue(s) de l'API`);
       
       if (locations.length === 0) {
@@ -142,7 +142,7 @@ export default function CarteSuivi() {
       <MapView 
         points={filteredPoints} 
         height="600px" 
-        showLegend={true}
+        showLegend={false}
         centerOnAgentId={agentId || undefined}
       />
 

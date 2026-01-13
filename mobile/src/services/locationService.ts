@@ -6,7 +6,7 @@ class LocationService {
   private intervalId: NodeJS.Timeout | null = null;
   private isRunning: boolean = false;
   private agentId: string | null = null;
-  private readonly INTERVAL_MS = 30 * 60 * 1000; // 30 minutes en millisecondes
+  private readonly INTERVAL_MS = 15 * 60 * 1000; // 15 minutes en millisecondes
 
   /**
    * Démarrer le suivi de localisation pour un agent
@@ -38,7 +38,7 @@ class LocationService {
       this.sendCurrentLocation();
     }, this.INTERVAL_MS);
 
-    console.log(`✅ [Location] Suivi démarré pour l'agent ${agentId} (intervalle: 30 min)`);
+    console.log(`✅ [Location] Suivi démarré pour l'agent ${agentId} (intervalle: 15 min)`);
   }
 
   /**
@@ -116,6 +116,19 @@ class LocationService {
    */
   isTracking(): boolean {
     return this.isRunning;
+  }
+
+  /**
+   * Forcer l'envoi immédiat de la position actuelle
+   * Utile pour tester ou envoyer manuellement la position
+   */
+  async forceSendLocation(): Promise<void> {
+    if (!this.agentId) {
+      console.error('❌ [Location] Aucun agent ID défini, impossible d\'envoyer la position');
+      throw new Error('Aucun agent connecté');
+    }
+    console.log('📍 [Location] Envoi forcé de la position...');
+    await this.sendCurrentLocation();
   }
 }
 
