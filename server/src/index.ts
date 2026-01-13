@@ -1425,14 +1425,14 @@ app.get('/api/dashboard/stats', async (req, res) => {
     const [producteursSemaine, parcellesSemaine] = await Promise.all([
       prisma.producteur.count({
         where: {
-          date_creation: {
+          createdAt: {
             gte: debutSemaine
           }
         }
       }),
       prisma.parcelle.count({
         where: {
-          date_creation: {
+          createdAt: {
             gte: debutSemaine
           }
         }
