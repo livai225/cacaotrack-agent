@@ -49,34 +49,55 @@ export default function CarteSuivi() {
     try {
       console.log('📍 [Carte] Chargement des positions des agents...');
       const locations = await agentService.getAgentLocations(30); // Positions des 30 dernières minutes
-      console.log(`📍 [Carte] ${locations.length} position(s) reçue(s):`, locations);
+      console.log(`📍 [Carte] ${locations.length} position(s) reçue(s) de l'API`);
+      
+      if (locations.length === 0) {
+        console.warn('⚠️ [Carte] Aucune position reçue. Vérifiez que:');
+        console.warn('  1. L\'agent mobile est connecté et a envoyé sa position');
+        console.warn('  2. L\'endpoint /api/agents/location fonctionne');
+        console.warn('  3. Les positions sont dans les 30 dernières minutes');
+      }
       
       // Convertir les positions en points de carte
-      const agentPoints: MapPoint[] = locations.map((loc: any) => ({
-        id: loc.id,
-        latitude: loc.latitude,
-        longitude: loc.longitude,
-        type: 'agent' as const,
-        nom: loc.agent.nom_complet,
-        details: `Agent ${loc.agent.code} - ${loc.agent.telephone || 'N/A'}`,
-        agent: {
-          id: loc.agent.id,
-          code: loc.agent.code,
-          nom_complet: loc.agent.nom_complet,
-          telephone: loc.agent.telephone,
-          statut: loc.agent.statut,
-        },
-        timestamp: loc.timestamp || loc.last_seen,
-        battery_level: loc.battery_level,
-        is_online: loc.is_online,
-      }));
+      const agentPoints: MapPoint[] = locations.map((loc: any) => {
+        if (!loc.latitude || !loc.longitude) {
+          console.error('❌ [Carte] Position invalide (latitude/longitude manquants):', loc);
+          return null;
+        }
+        return {
+          id: loc.id,
+          latitude: parseFloat(loc.latitude),
+          longitude: parseFloat(loc.longitude),
+          type: 'agent' as const,
+          nom: loc.agent?.nom_complet || `Agent ${loc.agent?.code || 'Inconnu'}`,
+          details: `Agent ${loc.agent?.code || 'N/A'} - ${loc.agent?.telephone || 'N/A'}`,
+          agent: {
+            id: loc.agent?.id,
+            code: loc.agent?.code,
+            nom_complet: loc.agent?.nom_complet,
+            telephone: loc.agent?.telephone,
+            statut: loc.agent?.statut,
+          },
+          timestamp: loc.timestamp || loc.last_seen,
+          battery_level: loc.battery_level,
+          is_online: loc.is_online,
+        };
+      }).filter((p: MapPoint | null): p is MapPoint => p !== null);
 
-      console.log(`✅ [Carte] ${agentPoints.length} point(s) agent créé(s)`);
+      console.log(`✅ [Carte] ${agentPoints.length} point(s) agent créé(s) et valide(s)`);
+      if (agentPoints.length > 0) {
+        console.log(`📍 [Carte] Premier point:`, {
+          nom: agentPoints[0].nom,
+          lat: agentPoints[0].latitude,
+          lng: agentPoints[0].longitude
+        });
+      }
       setPoints(agentPoints);
       setLastUpdate(new Date());
     } catch (error: any) {
       console.error('❌ [Carte] Erreur chargement positions agents:', error);
       console.error('❌ [Carte] Détails:', error?.response?.data || error.message);
+      console.error('❌ [Carte] Stack:', error?.stack);
       setPoints([]);
     } finally {
       setIsLoading(false);

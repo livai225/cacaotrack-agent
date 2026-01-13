@@ -1654,13 +1654,14 @@ app.get('/api/agents/locations', async (req, res) => {
     const since = new Date();
     since.setMinutes(since.getMinutes() - parseInt(minutes as string));
 
-    // Récupérer les dernières positions de chaque agent
+    console.log(`📍 [API] Récupération positions agents depuis ${since.toISOString()} (${minutes} minutes)`);
+
+    // Récupérer les dernières positions de chaque agent (sans filtrer par is_online pour voir toutes les positions)
     const locations = await prisma.agentLocation.findMany({
       where: {
         createdAt: {
           gte: since
-        },
-        is_online: true
+        }
       },
       include: {
         agent: {
@@ -1679,6 +1680,8 @@ app.get('/api/agents/locations', async (req, res) => {
       }
     });
 
+    console.log(`📍 [API] ${locations.length} position(s) trouvée(s) dans la base de données`);
+
     // Grouper par agent et prendre la dernière position de chaque agent
     const latestLocations = new Map();
     locations.forEach(loc => {
@@ -1687,6 +1690,8 @@ app.get('/api/agents/locations', async (req, res) => {
         latestLocations.set(loc.id_agent, loc);
       }
     });
+
+    console.log(`📍 [API] ${latestLocations.size} agent(s) unique(s) avec positions`);
 
     const result = Array.from(latestLocations.values()).map(loc => ({
       id: loc.id,
@@ -1710,6 +1715,16 @@ app.get('/api/agents/locations', async (req, res) => {
       timestamp: loc.createdAt,
       last_seen: loc.createdAt
     }));
+
+    console.log(`✅ [API] Retour de ${result.length} position(s) d'agent(s)`);
+    if (result.length > 0) {
+      console.log(`📍 [API] Exemple position:`, {
+        agent: result[0].agent.nom_complet,
+        lat: result[0].latitude,
+        lng: result[0].longitude,
+        timestamp: result[0].timestamp
+      });
+    }
 
     res.json(result);
   } catch (error: any) {
