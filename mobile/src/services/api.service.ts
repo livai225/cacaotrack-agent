@@ -327,9 +327,10 @@ class ApiService {
   }
 
   // ==================== DASHBOARD STATS ====================
-  async getDashboardStats() {
+  async getDashboardStats(agentId?: string) {
     try {
-      const response = await this.api.get('/dashboard/stats');
+      const params = agentId ? { agentId } : {};
+      const response = await this.api.get('/dashboard/stats', { params });
       return response.data;
     } catch (error: any) {
       console.error('❌ [API] Erreur récupération stats:', error);

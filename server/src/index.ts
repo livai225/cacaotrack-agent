@@ -1406,73 +1406,150 @@ app.delete('/api/operations/:id', async (req, res) => {
 
 // ==================== AGENTS ====================
 
-// Endpoint pour les statistiques du dashboard mobile
+// Endpoint pour les statistiques du dashboard mobile (spécifiques à l'agent)
 app.get('/api/dashboard/stats', async (req, res) => {
   try {
-    const [producteurs, parcelles, operations, organisations, sections, villages] = await Promise.all([
-      prisma.producteur.count(),
-      prisma.parcelle.count(),
-      prisma.operation.count(),
-      prisma.organisation.count(),
-      prisma.section.count(),
-      prisma.village.count(),
-    ]);
+    const agentId = req.query.agentId as string;
 
-    // Calculer les statistiques de la semaine (7 derniers jours)
-    const debutSemaine = new Date();
-    debutSemaine.setDate(debutSemaine.getDate() - 7);
+    // Si agentId fourni, retourner les stats spécifiques à l'agent
+    if (agentId) {
+      // Récupérer toutes les opérations de l'agent
+      const operationsAgent = await prisma.operation.findMany({
+        where: { id_agent: agentId },
+        select: {
+          id_producteur: true,
+          id_parcelle: true,
+          id_village: true,
+          createdAt: true,
+          statut: true,
+        },
+      });
 
-    const [producteursSemaine, parcellesSemaine] = await Promise.all([
-      prisma.producteur.count({
+      // Extraire les IDs uniques
+      const producteurIds = [...new Set(operationsAgent.map(op => op.id_producteur))];
+      const parcelleIds = [...new Set(operationsAgent.map(op => op.id_parcelle))];
+      const villageIds = [...new Set(operationsAgent.map(op => op.id_village))];
+
+      // Récupérer les villages pour obtenir les sections
+      const villages = await prisma.village.findMany({
+        where: { id: { in: villageIds } },
+        select: { id_section: true },
+      });
+
+      const sectionIds = [...new Set(villages.map(v => v.id_section))];
+
+      // Récupérer les sections pour obtenir les organisations
+      const sections = await prisma.section.findMany({
+        where: { id: { in: sectionIds } },
+        select: { id_organisation: true },
+      });
+
+      const organisationIds = [...new Set(sections.map(s => s.id_organisation))];
+
+      // Calculer les statistiques de la semaine (7 derniers jours)
+      const debutSemaine = new Date();
+      debutSemaine.setDate(debutSemaine.getDate() - 7);
+
+      const operationsSemaine = operationsAgent.filter(
+        op => new Date(op.createdAt) >= debutSemaine
+      ).length;
+
+      // Opérations en attente
+      const operationsEnAttente = operationsAgent.filter(
+        op => ['en_attente', 'pending', 'en_cours', 'Brouillon'].includes(op.statut)
+      ).length;
+
+      res.json({
+        producteurs: {
+          total: producteurIds.length,
+          growth: operationsSemaine > 0 ? operationsSemaine : 0
+        },
+        plantations: {
+          total: parcelleIds.length,
+          growth: operationsSemaine > 0 ? operationsSemaine : 0
+        },
+        recoltes: {
+          total: operationsEnAttente
+        },
+        organisations: {
+          total: organisationIds.length
+        },
+        sections: {
+          total: sectionIds.length
+        },
+        villages: {
+          total: villageIds.length
+        },
+        operations: {
+          total: operationsAgent.length,
+          growth: operationsSemaine
+        }
+      });
+    } else {
+      // Stats globales (pour compatibilité)
+      const [producteurs, parcelles, operations, organisations, sections, villages] = await Promise.all([
+        prisma.producteur.count(),
+        prisma.parcelle.count(),
+        prisma.operation.count(),
+        prisma.organisation.count(),
+        prisma.section.count(),
+        prisma.village.count(),
+      ]);
+
+      const debutSemaine = new Date();
+      debutSemaine.setDate(debutSemaine.getDate() - 7);
+
+      const [producteursSemaine, parcellesSemaine] = await Promise.all([
+        prisma.producteur.count({
+          where: {
+            createdAt: {
+              gte: debutSemaine
+            }
+          }
+        }),
+        prisma.parcelle.count({
+          where: {
+            createdAt: {
+              gte: debutSemaine
+            }
+          }
+        }),
+      ]);
+
+      const operationsEnAttente = await prisma.operation.count({
         where: {
-          createdAt: {
-            gte: debutSemaine
+          statut: {
+            in: ['en_attente', 'pending', 'en_cours']
           }
         }
-      }),
-      prisma.parcelle.count({
-        where: {
-          createdAt: {
-            gte: debutSemaine
-          }
-        }
-      }),
-    ]);
+      });
 
-    // Opérations en attente (statut = 'en_attente' ou similaire)
-    const operationsEnAttente = await prisma.operation.count({
-      where: {
-        statut: {
-          in: ['en_attente', 'pending', 'en_cours']
+      res.json({
+        producteurs: {
+          total: producteurs,
+          growth: producteursSemaine
+        },
+        plantations: {
+          total: parcelles,
+          growth: parcellesSemaine
+        },
+        recoltes: {
+          total: operationsEnAttente
+        },
+        organisations: {
+          total: organisations
+        },
+        sections: {
+          total: sections
+        },
+        villages: {
+          total: villages
+        },
+        operations: {
+          total: operations
         }
-      }
-    });
-
-    res.json({
-      producteurs: {
-        total: producteurs,
-        growth: producteursSemaine
-      },
-      plantations: {
-        total: parcelles,
-        growth: parcellesSemaine
-      },
-      recoltes: {
-        total: operationsEnAttente
-      },
-      organisations: {
-        total: organisations
-      },
-      sections: {
-        total: sections
-      },
-      villages: {
-        total: villages
-      },
-      operations: {
-        total: operations
-      }
-    });
+      });
+    }
   } catch (error: any) {
     console.error('❌ Erreur récupération stats dashboard:', error);
     res.status(500).json({ error: error.message || "Erreur récupération statistiques" });
