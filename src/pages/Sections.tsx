@@ -135,6 +135,15 @@ export default function Sections() {
                     </div>
                   </div>
 
+                  {(section as any).agent_creation && (
+                    <div className="mt-2 pt-2 border-t border-border">
+                      <p className="text-xs text-muted-foreground">Créé par</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {(section as any).agent_creation.nom} {(section as any).agent_creation.prenom} ({(section as any).agent_creation.code})
+                      </p>
+                    </div>
+                  )}
+
                   <div className="mt-3 pt-3 border-t border-border">
                     <Button
                       variant="destructive"

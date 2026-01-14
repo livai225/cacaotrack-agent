@@ -209,6 +209,19 @@ export default function SectionDetails() {
           </CardContent>
         </Card>
 
+        {/* Informations système */}
+        {(section as any).agent_creation && (
+          <Card className="md:col-span-3">
+            <CardHeader><CardTitle>Informations Système</CardTitle></CardHeader>
+            <CardContent>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Créé par</span>
+                <b className="text-sm">{(section as any).agent_creation.nom} {(section as any).agent_creation.prenom} ({(section as any).agent_creation.code})</b>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
       </div>
     </div>
   );

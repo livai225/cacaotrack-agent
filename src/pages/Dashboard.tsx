@@ -187,7 +187,7 @@ export default function Dashboard() {
       {/* En-tête Décideur */}
       <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Tableau de Bord Stratégique</h1>
+          <h1 className="text-3xl font-bold text-foreground">fiedifoue moh</h1>
           <p className="text-muted-foreground mt-1">Vue d'ensemble de la campagne 2024-2025</p>
         </div>
         <div className="text-right hidden md:block">

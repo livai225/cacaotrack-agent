@@ -164,6 +164,19 @@ export default function VillageDetails() {
                </CardContent>
             </Card>
 
+            {/* Informations système */}
+            {(village as any).agent_creation && (
+              <Card className="md:col-span-3">
+                <CardHeader><CardTitle>Informations Système</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Créé par</span>
+                    <b className="text-sm">{(village as any).agent_creation.nom} {(village as any).agent_creation.prenom} ({(village as any).agent_creation.code})</b>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
          </div>
       </div>
    );
